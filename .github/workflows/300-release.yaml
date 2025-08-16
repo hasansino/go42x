@@ -1,0 +1,52 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: write
+  attestations: write
+  id-token: write
+
+jobs:
+  docker-build:
+    name: docker-build
+    uses: ./.github/workflows/140-docker-build.yaml
+    with:
+      runs_on: ubuntu-latest
+      continue_on_error: false
+      service_name: "go42"
+      image_tag: ${{ github.ref_name }}
+      platforms: "linux/amd64,linux/arm64"
+      attestation: true
+      generate_sbom: true
+      attestation_sbom: true
+
+  goreleaser:
+    name: goreleaser
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: 'Set up Go'
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+      - name: 'Install Cosign'
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: 'v2.2.4'
+      - name: 'Run GoReleaser'
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COSIGN_EXPERIMENTAL: 1

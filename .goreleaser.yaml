@@ -1,0 +1,132 @@
+version: 2
+
+project_name: go42x
+
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+
+builds:
+  - id: go42x
+    main: ./main.go
+    binary: go42x
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/hasansino/go42x/cmd/version/.xBuildTag={{.Version}}
+      - -X github.com/hasansino/go42x/cmd/version/.xBuildCommit={{.Commit}}
+
+archives:
+  - id: go42x
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- if eq .Os "darwin" }}macOS{{ else }}{{ .Os }}{{ end }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    formats: [ tar.gz ]
+    format_overrides:
+      - goos: windows
+        formats: [ zip ]
+    files:
+      - LICENSE
+      - README.md
+
+nfpms:
+  - id: go42x-packages
+    package_name: go42x
+    vendor: hasansino
+    homepage: https://github.com/hasansino/go42x
+    maintainer: hasansino <hasansino@users.noreply.github.com>
+    description: Helper tool for go42 project
+    license: MIT
+    formats:
+      - deb
+      - rpm
+      - apk
+    dependencies:
+      - git
+    recommends:
+      - golang
+    section: utils
+    priority: optional
+    file_name_template: >-
+      {{ .PackageName }}_
+      {{- .Version }}_
+      {{- if eq .Os "darwin" }}macOS{{ else }}{{ .Os }}{{ end }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else if eq .Arch "arm64" }}aarch64
+      {{- else }}{{ .Arch }}{{ end }}
+    contents:
+      - src: LICENSE
+        dst: /usr/share/licenses/go42x/LICENSE
+      - src: README.md
+        dst: /usr/share/doc/go42x/README.md
+    deb:
+      lintian_overrides:
+        - statically-linked-binary
+        - changelog-file-missing-in-native-package
+    rpm:
+      group: Applications/System
+      compression: xz
+    apk:
+      signature:
+        key_file: ""
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ .Tag }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^ci:'
+      - '^chore:'
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: 'Changes'
+      order: 999
+
+release:
+  github:
+    owner: hasansino
+    name: go42x
+  prerelease: auto
+  make_latest: true
+  name_template: "{{.ProjectName}} v{{.Version}}"
+
+sboms:
+  - artifacts: archive
+
+signs:
+  - cmd: cosign
+    certificate: ""
+    args:
+      - "sign-blob"
+      - "--output-signature=${signature}"
+      - "--output-certificate=${certificate}"
+      - "${artifact}"
+      - "--yes"
+    artifacts: checksum
+    output: true
