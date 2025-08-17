@@ -75,7 +75,7 @@ jobs:
 
   cleanup:
     uses: ./.github/workflows/160-cleanup.yaml
-    needs: [ docker-build ]
+    needs: [ docker-prepare-tag, docker-build ]
     with:
       runs_on: ubuntu-latest
       service_name: "go42x"
