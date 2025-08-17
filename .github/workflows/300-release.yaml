@@ -10,6 +10,7 @@ permissions:
   packages: write
   attestations: write
   id-token: write
+  models: read
 
 jobs:
   docker-build:
@@ -24,6 +25,36 @@ jobs:
       attestation: true
       generate_sbom: true
       attestation_sbom: true
+
+  generate-summary:
+    name: generate-summary
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      models: read
+    outputs:
+      summary: ${{ steps.ai_summary.outputs.summary }}
+      previous_tag: ${{ steps.prev_tag.outputs.previous_tag }}
+    steps:
+      - name: 'Checkout repository with full history'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # ----
+      - name: 'Get previous tag'
+        id: prev_tag
+        run: |
+          PREVIOUS_TAG="$(git tag --sort=-version:refname | head -2 | tail -1 2>/dev/null || echo "")"
+          echo "previous_tag=$PREVIOUS_TAG" >> "$GITHUB_OUTPUT"
+      # ----
+      - name: 'Generate AI Summary'
+        id: ai_summary
+        uses: ./.github/actions/ai-generate-summary
+        with:
+          base_ref: ${{ steps.prev_tag.outputs.previous_tag }}
+          head_ref: ${{ github.ref_name }}
+          context_type: release
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
   goreleaser:
     name: goreleaser
@@ -46,7 +77,8 @@ jobs:
         uses: goreleaser/goreleaser-action@v6
         with:
           version: '~> v2'
-          args: release --clean
+          args: release --clean --release-notes="${{ needs.generate-summary.outputs.summary }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COSIGN_EXPERIMENTAL: 1
+          SUMMARY: ${{ needs.generate-summary.outputs.summary }}

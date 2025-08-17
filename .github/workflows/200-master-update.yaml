@@ -15,9 +15,6 @@ permissions: {}
 jobs:
   dep-submission:
     name: master-update
-    if: |
-      github.event.head_commit.message != 'initial commit' && 
-      !startsWith(github.event.head_commit.message, 'auto-release-')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -32,4 +29,4 @@ jobs:
         uses: actions/go-dependency-submission@v2
         with:
           go-mod-path: go.mod
-          go-build-target: cmd/app/main.go
+          go-build-target: .
