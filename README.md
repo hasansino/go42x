@@ -18,3 +18,7 @@
 # go42x
 
 Helper tool for go42 project.
+
+```bash
+go install github.com/hasansino/go42x@latest
+```
