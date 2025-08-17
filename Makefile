@@ -69,12 +69,12 @@ image:
 
 ## release-check | validate goreleaser configuration
 release-check:
-	@goreleaser check
+	@goreleaser --config etc/.goreleaser.yaml check
 
 ## release-snapshot | build release artifacts without publishing
 release-snapshot:
-	@goreleaser release --snapshot --clean --skip=publish,sign
+	@goreleaser --config etc/.goreleaser.yaml release --snapshot --clean --skip=publish,sign
 
 ## release-local | test the full release process locally
 release-local:
-	@goreleaser release --skip=publish --clean
+	@goreleaser --config etc/.goreleaser.yaml release --skip=publish --clean

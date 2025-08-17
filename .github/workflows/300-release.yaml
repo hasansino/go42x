@@ -69,7 +69,11 @@ jobs:
         uses: goreleaser/goreleaser-action@v6
         with:
           version: '~> v2'
-          args: release --clean --release-notes="${{ steps.relnotes.outputs.file }}"
+          args: >
+            release 
+            --clean 
+            --config etc/.goreleaser.yaml
+            --release-notes="${{ steps.relnotes.outputs.file }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COSIGN_EXPERIMENTAL: 1
