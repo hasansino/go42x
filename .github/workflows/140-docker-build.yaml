@@ -75,7 +75,12 @@ on:
         required: true
         type: boolean
 
-permissions: {}
+permissions:
+  packages: write
+  contents: read
+  attestations: write
+  id-token: write
+  actions: read
 
 jobs:
   # build image, pushes to ghcr.io and generates metadata
