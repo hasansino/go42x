@@ -27,27 +27,22 @@ jobs:
       generate_sbom: true
       attestation_sbom: true
 
-  generate-summary:
-    name: generate-summary
+  goreleaser:
+    name: goreleaser
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      models: read
-    outputs:
-      summary: ${{ steps.ai_summary.outputs.summary }}
-      previous_tag: ${{ steps.prev_tag.outputs.previous_tag }}
+    needs: [ docker-build ]
     steps:
-      - name: 'Checkout repository with full history'
+      - name: 'Checkout'
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      # ----
       - name: 'Get previous tag'
         id: prev_tag
         run: |
-          PREVIOUS_TAG="$(git tag --sort=-version:refname | head -2 | tail -1 2>/dev/null || echo "")"
-          echo "previous_tag=$PREVIOUS_TAG" >> "$GITHUB_OUTPUT"
-      # ----
+          TAGS=$(git tag --sort=-version:refname)
+          CURRENT="${{ github.ref_name }}"
+          PREVIOUS=$(echo "$TAGS" | grep -v "^$CURRENT$" | head -1 || true)
+          echo "previous_tag=$PREVIOUS" >> "$GITHUB_OUTPUT"
       - name: 'Generate AI Summary'
         id: ai_summary
         uses: ./.github/actions/ai-generate-summary
@@ -56,20 +51,16 @@ jobs:
           head_ref: ${{ github.ref_name }}
           context_type: release
           github_token: ${{ secrets.GITHUB_TOKEN }}
-
-  goreleaser:
-    name: goreleaser
-    runs-on: ubuntu-latest
-    steps:
-      - name: 'Checkout'
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: 'Set up Go'
+      - name: 'Prepare release notes file'
+        id: relnotes
+        run: |
+          NOTES_FILE=release-notes.md
+          printf "%s\n" "${{ steps.ai_summary.outputs.summary }}" > "$NOTES_FILE"
+          echo "file=$NOTES_FILE" >> "$GITHUB_OUTPUT"
+      - name: 'Setup Go'
         uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
-          cache: true
       - name: 'Install Cosign'
         uses: sigstore/cosign-installer@v3
         with:
@@ -78,8 +69,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v6
         with:
           version: '~> v2'
-          args: release --clean --release-notes="${{ needs.generate-summary.outputs.summary }}"
+          args: release --clean --release-notes="${{ steps.relnotes.outputs.file }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COSIGN_EXPERIMENTAL: 1
-          SUMMARY: ${{ needs.generate-summary.outputs.summary }}
