@@ -75,12 +75,7 @@ on:
         required: true
         type: boolean
 
-permissions:
-  packages: write
-  contents: read
-  attestations: write
-  id-token: write
-  actions: read
+permissions: {}
 
 jobs:
   # build image, pushes to ghcr.io and generates metadata
@@ -89,8 +84,8 @@ jobs:
     runs-on: ${{ inputs.runs_on }}
     continue-on-error: ${{ inputs.continue_on_error }}
     permissions:
-      packages: write
       contents: read
+      packages: write
       attestations: write
       id-token: write
       actions: read
