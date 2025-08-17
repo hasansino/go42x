@@ -6,6 +6,7 @@
 ██║░░╚██╗██║░░██║███████╗██╔══╝░░░░██╔██╗░░
 ╚██████╔╝╚█████╔╝╚════██║███████║░██╔╝╚██╗░
 ░╚═════╝░░╚════╝░░░░░░╚═╝╚══════╝░╚═╝░░╚═╝░
+</pre></div>
 <p align="center">
 <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="licence"></a>
 <a href="https://golang.org/"><img src="https://img.shields.io/badge/Go-1.24.6-00ADD8?style=flat&logo=go" alt="goversion"></a>
