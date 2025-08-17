@@ -20,7 +20,7 @@ jobs:
     with:
       runs_on: ubuntu-latest
       continue_on_error: false
-      service_name: "go42"
+      service_name: "go42x"
       image_tag: ${{ github.ref_name }}
       platforms: "linux/amd64,linux/arm64"
       attestation: true
