@@ -51,7 +51,7 @@ jobs:
           head_ref: ${{ github.ref_name }}
           context_type: release
           github_token: ${{ secrets.GITHUB_TOKEN }}
-      - name: 'Prepare release notes file'
+      - name: 'Prepare release notes'
         id: relnotes
         run: |
           NOTES_FILE="${RUNNER_TEMP}/release-notes.md"
@@ -63,8 +63,8 @@ jobs:
           go-version-file: 'go.mod'
       - name: 'Install Cosign'
         uses: sigstore/cosign-installer@v3
-        with:
-          cosign-release: 'v2.2.4'
+      - name: 'Install Syft'
+        uses: anchore/sbom-action/download-syft@v0
       - name: 'Run GoReleaser'
         uses: goreleaser/goreleaser-action@v6
         with:
