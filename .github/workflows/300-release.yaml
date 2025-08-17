@@ -54,7 +54,7 @@ jobs:
       - name: 'Prepare release notes file'
         id: relnotes
         run: |
-          NOTES_FILE=release-notes.md
+          NOTES_FILE="${RUNNER_TEMP}/release-notes.md"
           printf "%s\n" "${{ steps.ai_summary.outputs.summary }}" > "$NOTES_FILE"
           echo "file=$NOTES_FILE" >> "$GITHUB_OUTPUT"
       - name: 'Setup Go'
