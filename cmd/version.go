@@ -1,12 +1,10 @@
-package version
+package cmd
 
 import (
 	"fmt"
 	"runtime"
 
 	"github.com/spf13/cobra"
-
-	"github.com/hasansino/go42x/cmd"
 )
 
 var (
@@ -14,18 +12,18 @@ var (
 	xBuildTag    = "dev"
 )
 
-var versionCmd = &cobra.Command{
+var cmdVersion = &cobra.Command{
 	Use:   "version",
 	Short: "version information",
-	Long:  ``,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Version:    %s\n", xBuildCommit)
 		fmt.Printf("Commit:     %s\n", xBuildTag)
 		fmt.Printf("Go version: %s\n", runtime.Version())
 		fmt.Printf("OS/Arch:    %s/%s\n", runtime.GOOS, runtime.GOARCH)
+		return nil
 	},
 }
 
 func init() {
-	cmd.AddCommand(versionCmd)
+	root.AddCommand(cmdVersion)
 }
