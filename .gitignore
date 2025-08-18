@@ -9,4 +9,4 @@
 dist/
 
 # artifacts
-go42x
+./build/

@@ -53,11 +53,13 @@ ENV GOGC=100
 RUN --mount=type=cache,target=/go/pkg/mod,id=gomodcache \
     --mount=type=cache,target=/root/.cache/go-build,id=gobuildcache \
     go build -v -trimpath -buildvcs=false \
-    -ldflags "-s -w -X version.xBuildCommit=${COMMIT_HASH} -X version.xBuildTag=${RELEASE_TAG}" \
-    -o app .
+    -ldflags "-s -w \
+      -X github.com/hasansino/go42x/internal/build.xBuildCommit=${COMMIT_HASH} \
+      -X github.com/hasansino/go42x/internal/build.xBuildVersion=${RELEASE_TAG}" \
+    -o go42x ./cmd/go42x
 
 # Validate binary.
-RUN readelf -h app && du -h app && sha256sum app && go tool buildid app
+RUN readelf -h go42x && du -h go42x && sha256sum go42x && go tool buildid go42x
 
 # ---
 
@@ -80,7 +82,7 @@ RUN addgroup -g 1000 appuser && \
     adduser -u 1000 -G appuser -s /bin/sh -D appuser
 
 # Copy binary and other files from builder stage.
-COPY --from=builder --chown=appuser:appuser /tmp/build/app /usr/local/bin/
+COPY --from=builder --chown=appuser:appuser /tmp/build/go42x /usr/local/bin/
 
 # Entry point for container:
 #   * entrypoint.sh allows to run arbitrary commands and exec inside running containers.
@@ -91,4 +93,4 @@ ENTRYPOINT ["/entrypoint.sh"]
 # Application will be started by appuser inside isolated home directory.
 USER appuser
 WORKDIR /home/appuser
-CMD ["/usr/local/bin/app"]
+CMD ["/usr/local/bin/go42x"]

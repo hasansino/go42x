@@ -28,7 +28,7 @@ test-unit:
 # `-N -l` disables compiler optimizations and inlining, which makes debugging easier.
 # `[ $$? -eq 1 ]` treats exit code 1 as success. Exit after signal will always be != 0.
 run:
-	@go run -gcflags="all=-N -l" -race ./main.go $(filter-out $@,$(MAKECMDGOALS)) || [ $$? -eq 1 ]
+	@go run -gcflags="all=-N -l" -race ./cmd/go42x $(filter-out $@,$(MAKECMDGOALS)) || [ $$? -eq 1 ]
 
 ## run-docker | run application in docker container (linux environment)
 # `-N -l` disables compiler optimizations and inlining, which makes debugging easier.
@@ -41,16 +41,16 @@ run-docker:
 	-v $(shell pwd):/app \
 	-w /app \
 	golang:$(shell grep '^go ' go.mod | awk '{print $$2}') \
-	go run -gcflags="all=-N -l" -race ./main.go $(filter-out $@,$(MAKECMDGOALS)) || [ $$? -eq 1 ]
+	go run -gcflags="all=-N -l" -race ./cmd/go42x $(filter-out $@,$(MAKECMDGOALS)) || [ $$? -eq 1 ]
 
 ## debug | run application with delve debugger
 debug:
-	@dlv debug ./ --headless --listen=:2345 --accept-multiclient --api-version=2 -- $(filter-out $@,$(MAKECMDGOALS))
+	@dlv debug ./cmd/go42x --headless --listen=:2345 --accept-multiclient --api-version=2 -- $(filter-out $@,$(MAKECMDGOALS))
 
 ## build | build development version of binary
 build:
-	@go build -gcflags="all=-N -l" -race -v -o ./go42x ./main.go
-	@file -h ./go42x && du -h ./go42x && sha256sum ./go42x && go tool buildid ./go42x
+	@go build -gcflags="all=-N -l" -race -v -o ./build/go42x ./cmd/go42x
+	@file -h ./build/go42x && du -h ./build/go42x && sha256sum ./build/go42x && go tool buildid ./build/go42x
 
 ## image | build docker image
 # @see https://reproducible-builds.org/docs/source-date-epoch/
