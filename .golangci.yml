@@ -48,10 +48,11 @@ linters:
     - asasalint
 
   settings:
+    errcheck:
+      exclude-functions:
+        - (io.Closer).Close
     sloglint:
-      attr-only: true
       key-naming-case: snake
-      args-on-sep-lines: true
 
   exclusions:
     warn-unused: true
