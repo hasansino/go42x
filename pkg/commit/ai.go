@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hasansino/go42x/internal/cmdutil"
 	"github.com/hasansino/go42x/pkg/commit/providers/claude"
 	"github.com/hasansino/go42x/pkg/commit/providers/gemini"
 	"github.com/hasansino/go42x/pkg/commit/providers/openai"
@@ -31,24 +30,23 @@ Generate only the commit message, no explanations.
 `
 
 type AIService struct {
-	factory   *cmdutil.Factory
 	providers []providerAccessor
 }
 
-func NewAIService(factory *cmdutil.Factory) *AIService {
+func NewAIService() *AIService {
 	var providerList []providerAccessor
 
-	if openaiProvider := openai.NewOpenAI(factory); openaiProvider.IsAvailable() {
+	if openaiProvider := openai.NewOpenAI(); openaiProvider.IsAvailable() {
 		providerList = append(providerList, openaiProvider)
 	}
-	if claudeProvider := claude.NewClaude(factory); claudeProvider.IsAvailable() {
+	if claudeProvider := claude.NewClaude(); claudeProvider.IsAvailable() {
 		providerList = append(providerList, claudeProvider)
 	}
-	if geminiProvider := gemini.NewGemini(factory); geminiProvider.IsAvailable() {
+	if geminiProvider := gemini.NewGemini(); geminiProvider.IsAvailable() {
 		providerList = append(providerList, geminiProvider)
 	}
 
-	return &AIService{factory: factory, providers: providerList}
+	return &AIService{providers: providerList}
 }
 
 func (s *AIService) GetAvailableProviders() []string {

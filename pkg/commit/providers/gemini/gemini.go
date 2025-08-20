@@ -1,57 +1,22 @@
 package gemini
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
 	"strings"
 
-	"github.com/hasansino/go42x/internal/cmdutil"
-)
-
-const (
-	geminiAPI = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=%s"
+	"google.golang.org/genai"
 )
 
 type Gemini struct {
-	factory *cmdutil.Factory
-	apiKey  string
-	client  *http.Client
+	apiKey string
+	client *genai.Client
 }
 
-type geminiRequest struct {
-	Contents []geminiContent `json:"contents"`
-}
-
-type geminiContent struct {
-	Parts []geminiPart `json:"parts"`
-}
-
-type geminiPart struct {
-	Text string `json:"text"`
-}
-
-type geminiResponse struct {
-	Candidates []struct {
-		Content struct {
-			Parts []struct {
-				Text string `json:"text"`
-			} `json:"parts"`
-		} `json:"content"`
-	} `json:"candidates"`
-	Error *struct {
-		Message string `json:"message"`
-	} `json:"error"`
-}
-
-func NewGemini(factory *cmdutil.Factory) *Gemini {
+func NewGemini() *Gemini {
 	return &Gemini{
-		factory: factory,
-		apiKey:  os.Getenv("GEMINI_API_KEY"),
-		client:  factory.HTTPClient(),
+		apiKey: os.Getenv("GEMINI_API_KEY"),
 	}
 }
 
@@ -65,7 +30,17 @@ func (p *Gemini) IsAvailable() bool {
 
 func (p *Gemini) GenerateSuggestions(ctx context.Context, prompt string, maxSuggestions int) ([]string, error) {
 	if !p.IsAvailable() {
-		return nil, fmt.Errorf("google API key not available")
+		return nil, fmt.Errorf("google api key not available")
+	}
+
+	if p.client == nil {
+		client, err := genai.NewClient(ctx, &genai.ClientConfig{
+			APIKey: p.apiKey,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create genai client: %w", err)
+		}
+		p.client = client
 	}
 
 	enhancedPrompt := fmt.Sprintf(
@@ -74,49 +49,30 @@ func (p *Gemini) GenerateSuggestions(ctx context.Context, prompt string, maxSugg
 		maxSuggestions,
 	)
 
-	reqBody := geminiRequest{
-		Contents: []geminiContent{
-			{
-				Parts: []geminiPart{
-					{Text: enhancedPrompt},
-				},
-			},
-		},
+	contents := []*genai.Content{
+		genai.NewContentFromText(enhancedPrompt, "user"),
 	}
 
-	jsonData, err := json.Marshal(reqBody)
+	resp, err := p.client.Models.GenerateContent(ctx, "gemini-pro", contents, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
+		return nil, fmt.Errorf("failed to generate content: %w", err)
 	}
 
-	url := fmt.Sprintf(geminiAPI, p.apiKey)
-	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := p.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to make request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	var geminiResp geminiResponse
-	if err := json.NewDecoder(resp.Body).Decode(&geminiResp); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	if geminiResp.Error != nil {
-		return nil, fmt.Errorf("gemini API error: %s", geminiResp.Error.Message)
-	}
-
-	if len(geminiResp.Candidates) == 0 || len(geminiResp.Candidates[0].Content.Parts) == 0 {
+	if len(resp.Candidates) == 0 {
 		return nil, fmt.Errorf("no content received from gemini")
 	}
 
-	text := geminiResp.Candidates[0].Content.Parts[0].Text
+	var text string
+	for _, part := range resp.Candidates[0].Content.Parts {
+		if part.Text != "" {
+			text += part.Text
+		}
+	}
+
+	if text == "" {
+		return nil, fmt.Errorf("no text content received from gemini")
+	}
+
 	lines := strings.Split(text, "\n")
 
 	var suggestions []string

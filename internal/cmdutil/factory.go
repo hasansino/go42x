@@ -17,10 +17,9 @@ type Factory struct {
 
 func NewFactory(ctx context.Context, logger *slog.Logger) *Factory {
 	f := &Factory{
-		ctx:        ctx,
-		logger:     logger,
-		options:    new(Options),
-		httpClient: new(http.Client),
+		ctx:     ctx,
+		logger:  logger,
+		options: new(Options),
 	}
 	return f
 }
@@ -35,10 +34,6 @@ func (f *Factory) Logger() *slog.Logger {
 
 func (f *Factory) Options() *Options {
 	return f.options
-}
-
-func (f *Factory) HTTPClient() *http.Client {
-	return f.httpClient
 }
 
 func (f *Factory) BindFlags(flags *pflag.FlagSet) {

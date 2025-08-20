@@ -45,11 +45,10 @@ type openaiResponse struct {
 	} `json:"error"`
 }
 
-func NewOpenAI(factory *cmdutil.Factory) *OpenAI {
+func NewOpenAI() *OpenAI {
 	return &OpenAI{
-		factory: factory,
-		apiKey:  os.Getenv("OPENAI_API_KEY"),
-		client:  factory.HTTPClient(),
+		apiKey: os.Getenv("OPENAI_API_KEY"),
+		client: new(http.Client),
 	}
 }
 

@@ -44,11 +44,10 @@ type claudeResponse struct {
 	} `json:"error"`
 }
 
-func NewClaude(factory *cmdutil.Factory) *Claude {
+func NewClaude() *Claude {
 	return &Claude{
-		factory: factory,
-		apiKey:  os.Getenv("ANTHROPIC_API_KEY"),
-		client:  factory.HTTPClient(),
+		apiKey: os.Getenv("ANTHROPIC_API_KEY"),
+		client: new(http.Client),
 	}
 }
 

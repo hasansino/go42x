@@ -7,16 +7,13 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
-
-	"github.com/hasansino/go42x/internal/cmdutil"
 )
 
 type GitOperations struct {
-	factory *cmdutil.Factory
-	repo    *git.Repository
+	repo *git.Repository
 }
 
-func NewGitOperations(factory *cmdutil.Factory, repoPath string) (*GitOperations, error) {
+func NewGitOperations(repoPath string) (*GitOperations, error) {
 	repo, err := git.PlainOpenWithOptions(repoPath, &git.PlainOpenOptions{
 		DetectDotGit: true,
 	})
@@ -24,7 +21,7 @@ func NewGitOperations(factory *cmdutil.Factory, repoPath string) (*GitOperations
 		return nil, fmt.Errorf("failed to open git repository: %w", err)
 	}
 
-	return &GitOperations{factory: factory, repo: repo}, nil
+	return &GitOperations{repo: repo}, nil
 }
 
 func (g *GitOperations) GetCurrentBranch() (string, error) {
