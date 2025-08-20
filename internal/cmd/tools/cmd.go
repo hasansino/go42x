@@ -16,7 +16,7 @@ func NewToolsCommand(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.AddCommand(newGitFlushCommand(f))
+	cmd.AddCommand(newCommitCommand(f))
 
 	return cmd
 }

@@ -18,5 +18,8 @@ func newGenerateAgentEnvCommand(_ *cmdutil.Factory) *cobra.Command {
 			return nil
 		},
 	}
+
+	cmd.Flags().String("config", "", "path to configuration file")
+
 	return cmd
 }

@@ -1,3 +1,5 @@
+---
+
 name: release
 
 on:
@@ -30,7 +32,8 @@ jobs:
   goreleaser:
     name: goreleaser
     runs-on: ubuntu-latest
-    needs: [ docker-build ]
+    needs:
+      - docker-build
     steps:
       - name: 'Checkout'
         uses: actions/checkout@v4
@@ -49,9 +52,7 @@ jobs:
         with:
           version: '~> v2'
           args: >
-            release 
-            --clean 
-            --config etc/.goreleaser.yaml
+            release --clean --config .goreleaser.yaml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COSIGN_EXPERIMENTAL: 1

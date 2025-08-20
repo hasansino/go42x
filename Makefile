@@ -11,6 +11,9 @@ setup:
 	@go mod tidy -e && go mod download
 	@go install github.com/go-delve/delve/cmd/dlv@latest
 	@go install go.uber.org/mock/mockgen@latest
+
+## setup-release | install tools for release process
+setup-release:
 	@go install github.com/goreleaser/goreleaser/v2@latest
 	@go install github.com/anchore/syft/cmd/syft@latest
 	@go install github.com/sigstore/cosign/v2/cmd/cosign@latest
@@ -69,12 +72,12 @@ image:
 
 ## release-check | validate goreleaser configuration
 release-check:
-	@goreleaser --config etc/.goreleaser.yaml check
+	@goreleaser --config .goreleaser.yaml check
 
 ## release-snapshot | build release artifacts without publishing
 release-snapshot:
-	@goreleaser --config etc/.goreleaser.yaml release --snapshot --clean --skip=publish,sign
+	@goreleaser --config .goreleaser.yaml release --snapshot --clean --skip=publish,sign
 
 ## release-local | test the full release process locally
 release-local:
-	@goreleaser --config etc/.goreleaser.yaml release --skip=publish --clean
+	@goreleaser --config .goreleaser.yaml release --skip=publish --clean

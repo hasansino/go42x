@@ -1,3 +1,5 @@
+---
+
 name: golangci-lint
 
 # Golang linter.
@@ -46,4 +48,4 @@ jobs:
         uses: golangci/golangci-lint-action@v8
         with:
           version: latest
-          args: --config etc/.golangci.yml
+          args: --config .golangci.yml

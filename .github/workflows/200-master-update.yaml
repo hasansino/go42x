@@ -1,3 +1,5 @@
+---
+
 name: master-update
 
 # Syncs go dependencies with GitHub dependency submission API.
@@ -8,7 +10,8 @@ on:
   workflow_dispatch:
   # push or merge to master
   push:
-    branches: [ master ]
+    branches:
+      - master
 
 permissions: {}
 

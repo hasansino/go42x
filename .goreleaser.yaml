@@ -1,3 +1,5 @@
+---
+
 version: 2
 
 project_name: go42x
@@ -9,7 +11,7 @@ before:
 
 builds:
   - id: go42x
-    main: ./main.go
+    main: ./cmd/go42x/main.go
     binary: go42x
     env:
       - CGO_ENABLED=0
@@ -24,22 +26,20 @@ builds:
       - -trimpath
     ldflags:
       - -s -w
-      - -X github.com/hasansino/go42x/cmd/version/.xBuildTag={{.Version}}
-      - -X github.com/hasansino/go42x/cmd/version/.xBuildCommit={{.Commit}}
+      - -X github.com/hasansino/go42x/internal/build.xBuildTag={{.Version}}
+      - -X github.com/hasansino/go42x/internal/build.xBuildCommit={{.Commit}}
 
 archives:
   - id: go42x
     name_template: >-
-      {{ .ProjectName }}_
-      {{- .Version }}_
-      {{- if eq .Os "darwin" }}macOS{{ else }}{{ .Os }}{{ end }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "386" }}i386
-      {{- else }}{{ .Arch }}{{ end }}
-    formats: [ tar.gz ]
+      {{ .ProjectName }}_ {{- .Version }}_ {{- if eq .Os "darwin" }}macOS{{ else }}{{ .Os }}{{ end }}_ {{- if eq .Arch "amd64"
+      }}x86_64 {{- else if eq .Arch "386" }}i386 {{- else }}{{ .Arch }}{{ end }}
+    formats:
+      - tar.gz
     format_overrides:
       - goos: windows
-        formats: [ zip ]
+        formats:
+          - zip
     files:
       - LICENSE
       - README.md
@@ -63,13 +63,8 @@ nfpms:
     section: utils
     priority: optional
     file_name_template: >-
-      {{ .PackageName }}_
-      {{- .Version }}_
-      {{- if eq .Os "darwin" }}macOS{{ else }}{{ .Os }}{{ end }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "386" }}i386
-      {{- else if eq .Arch "arm64" }}aarch64
-      {{- else }}{{ .Arch }}{{ end }}
+      {{ .PackageName }}_ {{- .Version }}_ {{- if eq .Os "darwin" }}macOS{{ else }}{{ .Os }}{{ end }}_ {{- if eq .Arch "amd64"
+      }}x86_64 {{- else if eq .Arch "386" }}i386 {{- else if eq .Arch "arm64" }}aarch64 {{- else }}{{ .Arch }}{{ end }}
     contents:
       - src: LICENSE
         dst: /usr/share/licenses/go42x/LICENSE

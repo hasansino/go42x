@@ -2,10 +2,13 @@ package cmd
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
+	"github.com/lmittmann/tint"
 	"github.com/spf13/cobra"
 
 	"github.com/hasansino/go42x/internal/cmd/generate"
@@ -30,13 +33,12 @@ func NewGo42Command(ctx context.Context, f *cmdutil.Factory) *cobra.Command {
 		SilenceUsage:  true,
 	}
 
-	cmd.PersistentFlags().BoolP("debug", "d", false, "enable debug output")
-	cmd.PersistentFlags().BoolP("quiet", "q", false, "disable all output except errors")
-
 	cmd.SetContext(ctx)
 	cmd.SetIn(os.Stdin)
 	cmd.SetOut(os.Stdout)
 	cmd.SetErr(os.Stderr)
+
+	f.BindFlags(cmd.PersistentFlags())
 
 	cmd.AddCommand(NewVersionCommand())
 	cmd.AddCommand(generate.NewGenerateCommand(f))
@@ -49,8 +51,8 @@ func Execute() int {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
-	factory := cmdutil.NewFactory(ctx)
-
+	logger := initLogging()
+	factory := cmdutil.NewFactory(ctx, logger)
 	cmd := NewGo42Command(ctx, factory)
 
 	var execErr error
@@ -64,4 +66,24 @@ func Execute() int {
 	}
 
 	return exitOK
+}
+
+func initLogging() *slog.Logger {
+	loggerOpts := &tint.Options{
+		AddSource:  true,
+		Level:      slog.LevelInfo,
+		TimeFormat: time.Kitchen,
+	}
+
+	slogHandler := tint.NewHandler(os.Stdout, loggerOpts)
+	logger := slog.New(slogHandler)
+
+	// Any call to log.* will be redirected to slog.Error.
+	// Because of that, we need to agree to use `log` package only for errors.
+	slog.SetLogLoggerLevel(slog.LevelError)
+
+	// for both 'log' and 'slog'
+	slog.SetDefault(logger)
+
+	return logger
 }
