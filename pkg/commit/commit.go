@@ -141,8 +141,13 @@ func (s *Service) Execute(ctx context.Context) error {
 			s.options.Logger.ErrorContext(ctx, "Failed to create commit", "error", err)
 			return fmt.Errorf("failed to create commit: %w", err)
 		}
-		s.options.Logger.InfoContext(ctx, "Commit created", "message", commitMessage)
 	}
+
+	s.options.Logger.InfoContext(
+		ctx, "Commit created",
+		"message", commitMessage,
+		"dry_run", s.options.DryRun,
+	)
 
 	return nil
 }

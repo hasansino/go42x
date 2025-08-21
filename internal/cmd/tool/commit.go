@@ -36,7 +36,6 @@ func newCommitCommand(f *cmdutil.Factory) *cobra.Command {
 	flags.BoolVar(&options.DryRun, "dry-run", false, "Show what would be committed without committing")
 	flags.StringSliceVar(&options.ExcludePatterns, "exclude", nil, "Exclude patterns (can be used multiple times)")
 	flags.StringSliceVar(&options.IncludePatterns, "include-only", nil, "Only include specific patterns")
-
 	flags.BoolVar(&options.JiraPrefixDetection, "jira", false, "Enable auto JIRA prefix detection")
 
 	return cmd

@@ -29,8 +29,9 @@ func NewGo42Command(ctx context.Context, f *cmdutil.Factory) *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cmd.Help()
 		},
-		SilenceErrors: false,
-		SilenceUsage:  false,
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			initLogging(f.Options().LogLevel)
+		},
 	}
 
 	cmd.SetContext(ctx)
@@ -51,8 +52,6 @@ func Execute() int {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
-	initLogging()
-
 	factory := cmdutil.NewFactory(ctx)
 	cmd := NewGo42Command(ctx, factory)
 
@@ -69,16 +68,35 @@ func Execute() int {
 	return exitOK
 }
 
-func initLogging() {
+func initLogging(level string) {
+	var slogLevel slog.Level
+	switch level {
+	case "debug":
+		slogLevel = slog.LevelDebug
+	case "info":
+		slogLevel = slog.LevelInfo
+	case "warn":
+		slogLevel = slog.LevelWarn
+	case "error":
+		slogLevel = slog.LevelError
+	default:
+		slogLevel = slog.LevelInfo
+	}
+
 	loggerOpts := &tint.Options{
 		AddSource:  false,
-		Level:      slog.LevelDebug,
+		Level:      slogLevel,
 		TimeFormat: time.TimeOnly,
 	}
+
 	logger := slog.New(tint.NewHandler(os.Stdout, loggerOpts))
+
 	// Any call to log.* will be redirected to slog.Error.
 	// Because of that, we need to agree to use `log` package only for errors.
 	slog.SetLogLoggerLevel(slog.LevelError)
+
 	// for both 'log' and 'slog'
 	slog.SetDefault(logger)
+
+	logger.Info("Logging initialized", slog.String("level", level))
 }

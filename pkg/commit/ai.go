@@ -12,46 +12,12 @@ import (
 	"github.com/hasansino/go42x/pkg/commit/providers/claude"
 	"github.com/hasansino/go42x/pkg/commit/providers/gemini"
 	"github.com/hasansino/go42x/pkg/commit/providers/openai"
+
+	_ "embed"
 )
 
-const defaultPrompt = `
-# Goal
-
-Your task is to generate a concise commit message based on the provided git diff and branch information.
-
-# Requirements
-
-- Use conventional commits specification
-- Be concise but descriptive
-- Use maximum 100 characters per line
-- For a lot of changes use multi-line commit messages
-- Format multi-line messages with list, except first line
-- Use imperative mood (e.g., "Fix bug" instead of "Fixed bug")
-- Use present tense (e.g., "Add feature" instead of "Added feature")
-- Use lowercase letters
-- Do not use punctuation at the end of the message
-- Do not include any personal opinions or subjective statements
-- Do not include any URLs or links
-- Do not include any file names or paths
-- Do not include any technical jargon or abbreviations
-- Do not include any emojis or special characters
-- Do not include any references to the ai model or provider
-- Output only the commit message, nothing else
-
-# Context
-
-## Branch
-
-{branch}
-
-## Files changed:
-
-{files}
-
-## Diff
-
-{diff}
-`
+//go:embed prompt.md
+var defaultPrompt string
 
 type AIService struct {
 	logger    *slog.Logger
@@ -107,7 +73,7 @@ func (s *AIService) GenerateCommitMessages(
 		return nil, fmt.Errorf("no ai providers available")
 	}
 
-	prompt := buildPrompt(diff, branch, files, customPrompt)
+	prompt := s.buildPrompt(diff, branch, files, customPrompt)
 
 	type providerResponse struct {
 		Name    string
@@ -180,7 +146,7 @@ func (s *AIService) GenerateCommitMessages(
 	return results, nil
 }
 
-func buildPrompt(diff, branch string, files []string, customPrompt string) string {
+func (s *AIService) buildPrompt(diff, branch string, files []string, customPrompt string) string {
 	target := defaultPrompt
 	if customPrompt != "" {
 		target = customPrompt
