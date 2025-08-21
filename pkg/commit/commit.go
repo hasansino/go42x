@@ -14,6 +14,7 @@ type Options struct {
 	Providers    []string
 	CustomPrompt string
 	Timeout      time.Duration
+	First        bool
 	// operational
 	Auto   bool
 	DryRun bool
@@ -22,7 +23,7 @@ type Options struct {
 	ExcludePatterns []string
 	IncludePatterns []string
 	// standalone features
-	NoJIRA bool
+	JiraPrefixDetection bool
 }
 
 type Service struct {
@@ -92,6 +93,7 @@ func (s *Service) Execute(ctx context.Context) error {
 		ctx,
 		diff, branch, stagedFiles,
 		s.options.Providers, s.options.CustomPrompt,
+		s.options.First,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to generate suggestions: %w", err)
@@ -106,17 +108,20 @@ func (s *Service) Execute(ctx context.Context) error {
 		}
 		s.options.Logger.Debug("Auto-selected commit message", "message", commitMessage)
 	} else {
-		s.options.Logger.Debug("Opening interactive UI...")
+		s.options.Logger.Debug("Using interactive mode...")
 		commitMessage, err = RunInteractiveUI(messages)
 		if err != nil {
 			return fmt.Errorf("failed to run interactive ui: %w", err)
 		}
 	}
 
-	if !s.options.NoJIRA {
+	if s.options.JiraPrefixDetection {
 		jiraPrefix := DetectJIRAPrefix(branch)
 		commitMessage = ApplyJIRAPrefix(commitMessage, jiraPrefix)
-		s.options.Logger.Debug("Applied JIRA prefix", "prefix", jiraPrefix)
+		s.options.Logger.InfoContext(
+			ctx, "Detected JIRA prefix, commit message updated",
+			"prefix", jiraPrefix,
+		)
 	}
 
 	if !s.options.DryRun {

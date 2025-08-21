@@ -51,6 +51,7 @@ linters:
     errcheck:
       exclude-functions:
         - (io.Closer).Close
+        - (*os.File).Close
     sloglint:
       key-naming-case: snake
 

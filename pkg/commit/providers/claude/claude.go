@@ -60,7 +60,7 @@ func (p *Claude) RequestMessage(ctx context.Context, prompt string) ([]string, e
 
 	slog.Default().Debug("Received message from provider",
 		"provider", p.Name(),
-		"response", message.RawJSON(),
+		// "response", message.RawJSON(),
 	)
 
 	var text string

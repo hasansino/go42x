@@ -3,6 +3,7 @@ module github.com/hasansino/go42x
 go 1.24.6
 
 require (
+	github.com/ProtonMail/go-crypto v1.1.6
 	github.com/anthropics/anthropic-sdk-go v1.9.1
 	github.com/charmbracelet/bubbletea v1.3.6
 	github.com/charmbracelet/lipgloss v1.1.0
@@ -12,6 +13,7 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.7
 	go.uber.org/mock v0.6.0
+	golang.org/x/term v0.33.0
 	google.golang.org/genai v1.21.0
 )
 
@@ -21,7 +23,6 @@ require (
 	cloud.google.com/go/compute/metadata v0.5.0 // indirect
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
-	github.com/ProtonMail/go-crypto v1.1.6 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/charmbracelet/colorprofile v0.2.3-0.20250311203215-f60798e515dc // indirect
 	github.com/charmbracelet/x/ansi v0.9.3 // indirect

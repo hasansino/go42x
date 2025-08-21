@@ -62,7 +62,7 @@ func (p *OpenAI) RequestMessage(ctx context.Context, prompt string) ([]string, e
 
 	slog.Default().Debug("Received message from provider",
 		"provider", p.Name(),
-		"response", chatCompletion.RawJSON(),
+		// "response", chatCompletion.RawJSON(),
 	)
 
 	var suggestions []string

@@ -2,6 +2,7 @@ package commit
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -99,6 +100,7 @@ func (s *AIService) GenerateCommitMessages(
 	ctx context.Context,
 	diff, branch string, files []string,
 	providers []string, customPrompt string,
+	first bool,
 ) (map[string]string, error) {
 	activeProviders := s.FilterProviders(providers)
 	if len(activeProviders) == 0 {
@@ -112,12 +114,14 @@ func (s *AIService) GenerateCommitMessages(
 		Message string
 	}
 
-	resultChan := make(chan providerResponse, len(activeProviders))
+	commonCtx, commonCtxCancel := context.WithCancel(ctx)
+
 	wg := &sync.WaitGroup{}
-	wg.Add(len(activeProviders))
+	resultChan := make(chan providerResponse, len(activeProviders))
 
 	for _, provider := range activeProviders {
-		go func(provider providerAccessor) {
+		wg.Add(1)
+		go func(ctx context.Context, provider providerAccessor) {
 			defer wg.Done()
 
 			s.logger.DebugContext(
@@ -130,11 +134,13 @@ func (s *AIService) GenerateCommitMessages(
 
 			messages, err := provider.RequestMessage(ctx, prompt)
 			if err != nil {
-				s.logger.ErrorContext(
-					ctx, "Failed to request message from provider",
-					"provider", provider.Name(),
-					"error", err.Error(),
-				)
+				if !errors.Is(err, context.Canceled) {
+					s.logger.ErrorContext(
+						ctx, "Failed to request message from provider",
+						"provider", provider.Name(),
+						"error", err.Error(),
+					)
+				}
 				return
 			}
 
@@ -150,16 +156,27 @@ func (s *AIService) GenerateCommitMessages(
 				Name:    provider.Name(),
 				Message: messages[0],
 			}
-		}(provider)
+		}(commonCtx, provider)
 	}
-	wg.Wait()
-	close(resultChan)
 
 	results := make(map[string]string)
+
+	// we want first fastest response
+	if first {
+		msg := <-resultChan
+		results[msg.Name] = msg.Message
+		commonCtxCancel()
+		wg.Wait()
+		close(resultChan)
+		return results, nil
+	}
+
+	wg.Wait()
+	commonCtxCancel()
+	close(resultChan)
 	for result := range resultChan {
 		results[result.Name] = result.Message
 	}
-
 	return results, nil
 }
 

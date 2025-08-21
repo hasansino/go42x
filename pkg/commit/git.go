@@ -2,15 +2,29 @@ package commit
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
+	"time"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"golang.org/x/term"
 )
 
 type GitOperations struct {
 	repo *git.Repository
+}
+
+type GitConfig struct {
+	UserName   string
+	UserEmail  string
+	GPGSign    bool
+	SigningKey string
+	GPGProgram string
 }
 
 func NewGitOperations(repoPath string) (*GitOperations, error) {
@@ -22,6 +36,50 @@ func NewGitOperations(repoPath string) (*GitOperations, error) {
 	}
 
 	return &GitOperations{repo: repo}, nil
+}
+
+// GetConfig reads git configuration - fails if user.name or user.email not configured
+func (g *GitOperations) GetConfig() (*GitConfig, error) {
+	config := &GitConfig{
+		GPGSign:    false,
+		GPGProgram: "gpg",
+	}
+
+	// Get required user configuration
+	userName := g.getConfigValue("user.name")
+	if userName == "" {
+		return nil, fmt.Errorf("git user.name not configured. Run: git config user.name \"Your Name\"")
+	}
+	config.UserName = userName
+
+	userEmail := g.getConfigValue("user.email")
+	if userEmail == "" {
+		return nil, fmt.Errorf("git user.email not configured. Run: git config user.email \"your.email@example.com\"")
+	}
+	config.UserEmail = userEmail
+
+	// Read optional GPG configuration
+	if gpgSign := g.getConfigValue("commit.gpgsign"); gpgSign != "" {
+		config.GPGSign = strings.ToLower(gpgSign) == "true"
+	}
+	if signingKey := g.getConfigValue("user.signingkey"); signingKey != "" {
+		config.SigningKey = signingKey
+	}
+	if gpgProgram := g.getConfigValue("gpg.program"); gpgProgram != "" {
+		config.GPGProgram = gpgProgram
+	}
+
+	return config, nil
+}
+
+// getConfigValue reads a specific git config value using git command
+func (g *GitOperations) getConfigValue(key string) string {
+	cmd := exec.Command("git", "config", key)
+	output, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(output))
 }
 
 func (g *GitOperations) GetCurrentBranch() (string, error) {
@@ -225,20 +283,171 @@ func (g *GitOperations) GetStagedDiff() (string, error) {
 }
 
 func (g *GitOperations) CreateCommit(message string) error {
+	// Get git configuration
+	config, err := g.GetConfig()
+	if err != nil {
+		return fmt.Errorf("failed to get git config: %w", err)
+	}
+
 	worktree, err := g.repo.Worktree()
 	if err != nil {
 		return fmt.Errorf("failed to get worktree: %w", err)
 	}
-	_, err = worktree.Commit(message, &git.CommitOptions{
+
+	// Create commit options with real user identity
+	commitOptions := &git.CommitOptions{
 		Author: &object.Signature{
-			Name:  "go42x",
-			Email: "noreply@go42x.com",
+			Name:  config.UserName,
+			Email: config.UserEmail,
+			When:  time.Now(),
 		},
-	})
+	}
+
+	// Add GPG signing if enabled
+	if config.GPGSign {
+		if config.SigningKey == "" {
+			return fmt.Errorf("commit.gpgsign=true but user.signingkey not configured")
+		}
+		signKey, err := g.loadGPGSigningKey(config)
+		if err != nil {
+			return fmt.Errorf("failed to load GPG signing key %s: %w", config.SigningKey, err)
+		}
+		commitOptions.SignKey = signKey
+	}
+
+	_, err = worktree.Commit(message, commitOptions)
 	if err != nil {
 		return fmt.Errorf("failed to create commit: %w", err)
 	}
 
+	return nil
+}
+
+// loadGPGSigningKey loads the GPG private key for commit signing
+func (g *GitOperations) loadGPGSigningKey(config *GitConfig) (*openpgp.Entity, error) {
+	if config.SigningKey == "" {
+		return nil, fmt.Errorf("no signing key specified")
+	}
+
+	// Try to get GPG key from user's keyring
+	keyring, err := g.getGPGKeyring(config.GPGProgram)
+	if err != nil {
+		return nil, fmt.Errorf("failed to access GPG keyring: %w", err)
+	}
+
+	// Find the specific signing key
+	for _, entity := range keyring {
+		// Check if this entity matches the signing key ID
+		if g.matchesSigningKey(entity, config.SigningKey) {
+			// Check if the key is encrypted and needs to be decrypted
+			if entity.PrivateKey != nil && entity.PrivateKey.Encrypted {
+				err := g.decryptPrivateKey(entity, config.SigningKey)
+				if err != nil {
+					return nil, fmt.Errorf("failed to decrypt signing key %s: %w", config.SigningKey, err)
+				}
+			}
+			return entity, nil
+		}
+	}
+
+	return nil, fmt.Errorf("signing key %s not found in keyring", config.SigningKey)
+}
+
+// getGPGKeyring reads the user's GPG keyring
+func (g *GitOperations) getGPGKeyring(gpgProgram string) (openpgp.EntityList, error) {
+	// Get GPG home directory
+	gpgHome := os.Getenv("GNUPGHOME")
+	if gpgHome == "" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get user home directory: %w", err)
+		}
+		gpgHome = filepath.Join(homeDir, ".gnupg")
+	}
+
+	// Try to read secret keyring
+	secretKeyringPath := filepath.Join(gpgHome, "secring.gpg")
+	if _, err := os.Stat(secretKeyringPath); err == nil {
+		// Old GPG format
+		file, err := os.Open(secretKeyringPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open secret keyring: %w", err)
+		}
+		defer file.Close()
+
+		return openpgp.ReadKeyRing(file)
+	}
+
+	// For newer GPG versions, we need to export keys
+	return g.exportGPGKeys(gpgProgram)
+}
+
+// exportGPGKeys exports GPG keys using the gpg command
+func (g *GitOperations) exportGPGKeys(gpgProgram string) (openpgp.EntityList, error) {
+	// Export secret keys in ASCII armor format
+	cmd := exec.Command(gpgProgram, "--export-secret-keys", "--armor")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to export GPG keys: %w", err)
+	}
+
+	// Parse the exported keys
+	return openpgp.ReadArmoredKeyRing(strings.NewReader(string(output)))
+}
+
+// matchesSigningKey checks if a GPG entity matches the signing key identifier
+func (g *GitOperations) matchesSigningKey(entity *openpgp.Entity, signingKey string) bool {
+	// Check primary key ID (full or short form)
+	primaryKeyID := fmt.Sprintf("%016X", entity.PrimaryKey.KeyId)
+	if strings.HasSuffix(primaryKeyID, strings.ToUpper(signingKey)) {
+		return true
+	}
+
+	// Check subkey IDs
+	for _, subkey := range entity.Subkeys {
+		subkeyID := fmt.Sprintf("%016X", subkey.PublicKey.KeyId)
+		if strings.HasSuffix(subkeyID, strings.ToUpper(signingKey)) {
+			return true
+		}
+	}
+
+	// Check user IDs (email addresses)
+	for _, identity := range entity.Identities {
+		if strings.Contains(identity.UserId.Email, signingKey) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// decryptPrivateKey prompts for passphrase and decrypts the GPG private key
+func (g *GitOperations) decryptPrivateKey(entity *openpgp.Entity, keyID string) error {
+	fmt.Printf("Enter passphrase for GPG key %s: ", keyID)
+	
+	// Read passphrase securely (without echoing to terminal)
+	passphrase, err := term.ReadPassword(int(syscall.Stdin))
+	if err != nil {
+		return fmt.Errorf("failed to read passphrase: %w", err)
+	}
+	fmt.Println() // Add newline after password input
+	
+	// Attempt to decrypt the private key with the passphrase
+	err = entity.PrivateKey.Decrypt(passphrase)
+	if err != nil {
+		return fmt.Errorf("incorrect passphrase or decryption failed: %w", err)
+	}
+	
+	// Also decrypt subkeys if they exist
+	for _, subkey := range entity.Subkeys {
+		if subkey.PrivateKey != nil && subkey.PrivateKey.Encrypted {
+			err = subkey.PrivateKey.Decrypt(passphrase)
+			if err != nil {
+				return fmt.Errorf("failed to decrypt subkey: %w", err)
+			}
+		}
+	}
+	
 	return nil
 }
 
