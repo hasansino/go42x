@@ -27,29 +27,6 @@ setup-release:
 test-unit:
 	@go test -count=1 -v -race $(shell go list ./... | grep -v './tests')
 
-## run | run application
-# `-N -l` disables compiler optimizations and inlining, which makes debugging easier.
-# `[ $$? -eq 1 ]` treats exit code 1 as success. Exit after signal will always be != 0.
-run:
-	@go run -gcflags="all=-N -l" -race ./cmd/go42x $(filter-out $@,$(MAKECMDGOALS)) || [ $$? -eq 1 ]
-
-## run-docker | run application in docker container (linux environment)
-# `-N -l` disables compiler optimizations and inlining, which makes debugging easier.
-# Using golang image version from go.mod file.
-# `[ $$? -eq 1 ]` treats exit code 1 as success. Exit after signal will always be != 0.
-run-docker:
-	@docker run --rm -it --init \
-	-v go-cache:/root/.cache/go-build \
-	-v go-mod-cache:/go/pkg/mod \
-	-v $(shell pwd):/app \
-	-w /app \
-	golang:$(shell grep '^go ' go.mod | awk '{print $$2}') \
-	go run -gcflags="all=-N -l" -race ./cmd/go42x $(filter-out $@,$(MAKECMDGOALS)) || [ $$? -eq 1 ]
-
-## debug | run application with delve debugger
-debug:
-	@dlv debug ./cmd/go42x --headless --listen=:2345 --accept-multiclient --api-version=2 -- $(filter-out $@,$(MAKECMDGOALS))
-
 ## build | build development version of binary
 build:
 	@go build -gcflags="all=-N -l" -race -v -o ./build/go42x ./cmd/go42x

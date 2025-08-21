@@ -82,3 +82,42 @@ func (mr *MockproviderAccessorMockRecorder) RequestMessage(ctx, prompt any) *gom
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RequestMessage", reflect.TypeOf((*MockproviderAccessor)(nil).RequestMessage), ctx, prompt)
 }
+
+// MockuiAccessor is a mock of uiAccessor interface.
+type MockuiAccessor struct {
+	ctrl     *gomock.Controller
+	recorder *MockuiAccessorMockRecorder
+	isgomock struct{}
+}
+
+// MockuiAccessorMockRecorder is the mock recorder for MockuiAccessor.
+type MockuiAccessorMockRecorder struct {
+	mock *MockuiAccessor
+}
+
+// NewMockuiAccessor creates a new mock instance.
+func NewMockuiAccessor(ctrl *gomock.Controller) *MockuiAccessor {
+	mock := &MockuiAccessor{ctrl: ctrl}
+	mock.recorder = &MockuiAccessorMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockuiAccessor) EXPECT() *MockuiAccessorMockRecorder {
+	return m.recorder
+}
+
+// ShowInteractive mocks base method.
+func (m *MockuiAccessor) ShowInteractive(suggestions map[string]string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ShowInteractive", suggestions)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ShowInteractive indicates an expected call of ShowInteractive.
+func (mr *MockuiAccessorMockRecorder) ShowInteractive(suggestions any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShowInteractive", reflect.TypeOf((*MockuiAccessor)(nil).ShowInteractive), suggestions)
+}

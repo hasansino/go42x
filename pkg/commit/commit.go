@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"strings"
 	"time"
+
+	"github.com/hasansino/go42x/pkg/commit/ui"
 )
 
 type Options struct {
@@ -30,6 +32,7 @@ type Service struct {
 	options   *Options
 	gitOps    *GitOperations
 	aiService *AIService
+	uiService uiAccessor
 }
 
 func NewCommitService(options *Options, repoPath string) (*Service, error) {
@@ -44,6 +47,7 @@ func NewCommitService(options *Options, repoPath string) (*Service, error) {
 		options:   options,
 		gitOps:    git,
 		aiService: NewAIService(options.Logger, options.Timeout),
+		uiService: ui.NewInteractiveService(),
 	}, nil
 }
 
@@ -116,7 +120,7 @@ func (s *Service) Execute(ctx context.Context) error {
 		s.options.Logger.DebugContext(ctx, "Auto-selected commit message", "message", commitMessage)
 	} else {
 		s.options.Logger.DebugContext(ctx, "Using interactive mode...")
-		commitMessage, err = RunInteractiveUI(messages)
+		commitMessage, err = s.uiService.ShowInteractive(messages)
 		if err != nil {
 			s.options.Logger.ErrorContext(ctx, "Failed to enter interactive mode", "error", err)
 			return fmt.Errorf("failed to run interactive ui: %w", err)

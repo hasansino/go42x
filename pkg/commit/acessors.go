@@ -9,3 +9,7 @@ type providerAccessor interface {
 	IsAvailable() bool
 	RequestMessage(ctx context.Context, prompt string) ([]string, error)
 }
+
+type uiAccessor interface {
+	ShowInteractive(suggestions map[string]string) (string, error)
+}
