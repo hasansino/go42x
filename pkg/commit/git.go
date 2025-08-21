@@ -54,21 +54,12 @@ func (g *GitOperations) UnstageAll() error {
 		return fmt.Errorf("failed to get worktree: %w", err)
 	}
 
-	status, err := worktree.Status()
+	// Single reset operation instead of per-file operations
+	err = worktree.Reset(&git.ResetOptions{
+		Mode: git.MixedReset,
+	})
 	if err != nil {
-		return fmt.Errorf("failed to get status: %w", err)
-	}
-
-	for file := range status {
-		if status.File(file).Staging != git.Unmodified {
-			err := worktree.Reset(&git.ResetOptions{
-				Mode: git.MixedReset,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to reset: %w", err)
-			}
-			break
-		}
+		return fmt.Errorf("failed to reset: %w", err)
 	}
 
 	return nil
@@ -80,12 +71,91 @@ func (g *GitOperations) StageFiles(excludePatterns []string, includePatterns []s
 		return nil, fmt.Errorf("failed to get worktree: %w", err)
 	}
 
+	// Optimization: if no patterns specified, use AddWithOptions for better performance
+	if len(excludePatterns) == 0 && len(includePatterns) == 0 {
+		return g.stageAllModified(worktree)
+	}
+
+	// If we have simple include patterns (glob-compatible), try to use AddGlob
+	if len(excludePatterns) == 0 && len(includePatterns) == 1 && isSimpleGlobPattern(includePatterns[0]) {
+		return g.stageWithGlob(worktree, includePatterns[0])
+	}
+
+	// Fall back to filtered staging for complex patterns
+	return g.stageFiltered(worktree, excludePatterns, includePatterns)
+}
+
+// Fast path: stage all modified files
+func (g *GitOperations) stageAllModified(worktree *git.Worktree) ([]string, error) {
+	// Get status first to return the list of staged files
 	status, err := worktree.Status()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get status: %w", err)
 	}
 
-	var stagedFiles []string
+	var modifiedFiles []string
+	for file := range status {
+		fileStatus := status.File(file)
+		if fileStatus.Worktree != git.Unmodified {
+			modifiedFiles = append(modifiedFiles, file)
+		}
+	}
+
+	if len(modifiedFiles) == 0 {
+		return []string{}, nil
+	}
+
+	// Use AddWithOptions with All flag for better performance
+	err = worktree.AddWithOptions(&git.AddOptions{
+		All: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to stage all files: %w", err)
+	}
+
+	return modifiedFiles, nil
+}
+
+// Fast path: use glob patterns when possible
+func (g *GitOperations) stageWithGlob(worktree *git.Worktree, pattern string) ([]string, error) {
+	// Get status first to return the list of staged files
+	status, err := worktree.Status()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get status: %w", err)
+	}
+
+	var matchingFiles []string
+	for file := range status {
+		fileStatus := status.File(file)
+		if fileStatus.Worktree == git.Unmodified {
+			continue
+		}
+		if matched, _ := filepath.Match(pattern, file); matched {
+			matchingFiles = append(matchingFiles, file)
+		}
+	}
+
+	if len(matchingFiles) == 0 {
+		return []string{}, nil
+	}
+
+	err = worktree.AddGlob(pattern)
+	if err != nil {
+		return nil, fmt.Errorf("failed to stage files with pattern %s: %w", pattern, err)
+	}
+
+	return matchingFiles, nil
+}
+
+// Fallback: filtered staging for complex patterns
+func (g *GitOperations) stageFiltered(worktree *git.Worktree, excludePatterns, includePatterns []string) ([]string, error) {
+	status, err := worktree.Status()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get status: %w", err)
+	}
+
+	// Build list of files to stage (filtering phase)
+	var filesToStage []string
 	for file := range status {
 		fileStatus := status.File(file)
 		if fileStatus.Worktree == git.Unmodified {
@@ -100,14 +170,31 @@ func (g *GitOperations) StageFiles(excludePatterns []string, includePatterns []s
 			continue
 		}
 
+		filesToStage = append(filesToStage, file)
+	}
+
+	// Early return if no files to stage
+	if len(filesToStage) == 0 {
+		return []string{}, nil
+	}
+
+	// Stage files individually (necessary for complex filtering)
+	for _, file := range filesToStage {
 		_, err := worktree.Add(file)
 		if err != nil {
 			return nil, fmt.Errorf("failed to stage file %s: %w", file, err)
 		}
-		stagedFiles = append(stagedFiles, file)
 	}
 
-	return stagedFiles, nil
+	return filesToStage, nil
+}
+
+// Helper function to check if pattern is simple glob (no complex logic needed)
+func isSimpleGlobPattern(pattern string) bool {
+	// Simple check: if it contains only *, ?, and regular chars, it's probably a simple glob
+	// Exclude patterns with path separators or complex logic
+	return !strings.Contains(pattern, "/") && 
+		   (strings.Contains(pattern, "*") || strings.Contains(pattern, "?"))
 }
 
 func (g *GitOperations) GetStagedDiff() (string, error) {
@@ -153,14 +240,21 @@ func (g *GitOperations) CreateCommit(message string) error {
 }
 
 func shouldExcludeFile(file string, patterns []string) bool {
+	if len(patterns) == 0 {
+		return false
+	}
+	
+	basename := filepath.Base(file)
 	for _, pattern := range patterns {
+		// Fast string containment check first (most common case)
+		if strings.Contains(file, pattern) || strings.Contains(basename, pattern) {
+			return true
+		}
+		// Expensive glob matching only if simple checks fail
 		if matched, _ := filepath.Match(pattern, file); matched {
 			return true
 		}
-		if matched, _ := filepath.Match(pattern, filepath.Base(file)); matched {
-			return true
-		}
-		if strings.Contains(file, pattern) {
+		if matched, _ := filepath.Match(pattern, basename); matched {
 			return true
 		}
 	}
@@ -168,14 +262,21 @@ func shouldExcludeFile(file string, patterns []string) bool {
 }
 
 func shouldIncludeFile(file string, patterns []string) bool {
+	if len(patterns) == 0 {
+		return false
+	}
+	
+	basename := filepath.Base(file)
 	for _, pattern := range patterns {
+		// Fast string containment check first (most common case)
+		if strings.Contains(file, pattern) || strings.Contains(basename, pattern) {
+			return true
+		}
+		// Expensive glob matching only if simple checks fail
 		if matched, _ := filepath.Match(pattern, file); matched {
 			return true
 		}
-		if matched, _ := filepath.Match(pattern, filepath.Base(file)); matched {
-			return true
-		}
-		if strings.Contains(file, pattern) {
+		if matched, _ := filepath.Match(pattern, basename); matched {
 			return true
 		}
 	}

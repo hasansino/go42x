@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"time"
 
 	"google.golang.org/genai"
 )
@@ -13,6 +14,7 @@ import (
 const (
 	defaultModel     = "gemini-2.5-flash"
 	defaultMaxTokens = 500
+	defaultTimeout   = 5 * time.Second
 )
 
 type Gemini struct {
@@ -53,8 +55,12 @@ func (p *Gemini) RequestMessage(ctx context.Context, prompt string) ([]string, e
 		genai.NewContentFromText(prompt, "user"),
 	}
 
+	timeout := defaultTimeout
 	resp, err := p.client.Models.GenerateContent(ctx, defaultModel, contents, &genai.GenerateContentConfig{
 		MaxOutputTokens: defaultMaxTokens,
+		HTTPOptions: &genai.HTTPOptions{
+			Timeout: &timeout,
+		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate content: %w", err)

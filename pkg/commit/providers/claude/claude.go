@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
@@ -14,6 +15,7 @@ import (
 const (
 	defaultModel     = "claude-3-5-haiku-latest"
 	defaultMaxTokens = 500
+	defaultTimeout   = 5 * time.Second
 )
 
 type Claude struct {
@@ -43,6 +45,7 @@ func (p *Claude) RequestMessage(ctx context.Context, prompt string) ([]string, e
 	if p.client == nil {
 		client := anthropic.NewClient(
 			option.WithAPIKey(p.apiKey),
+			option.WithRequestTimeout(defaultTimeout),
 		)
 		p.client = &client
 	}

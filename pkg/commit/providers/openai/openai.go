@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/openai/openai-go/v2"
 	"github.com/openai/openai-go/v2/option"
@@ -15,6 +16,7 @@ import (
 const (
 	defaultModel     = shared.ChatModelGPT4Turbo
 	defaultMaxTokens = 500
+	defaultTimeout   = 5 * time.Second
 )
 
 type OpenAI struct {
@@ -44,6 +46,7 @@ func (p *OpenAI) RequestMessage(ctx context.Context, prompt string) ([]string, e
 	if p.client == nil {
 		client := openai.NewClient(
 			option.WithAPIKey(p.apiKey),
+			option.WithRequestTimeout(defaultTimeout),
 		)
 		p.client = &client
 	}
