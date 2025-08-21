@@ -28,7 +28,7 @@ test-unit:
 
 ## build | build development version of binary
 build:
-	@go build -gcflags="all=-N -l" -race -v -o ./build/go42x ./cmd/go42x
+	@go build -gcflags="all=-N -l" -race -v -o ./build/go42x .
 	@file -h ./build/go42x && du -h ./build/go42x && sha256sum ./build/go42x && go tool buildid ./build/go42x
 
 ## image | build docker image

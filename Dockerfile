@@ -56,7 +56,7 @@ RUN --mount=type=cache,target=/go/pkg/mod,id=gomodcache \
     -ldflags "-s -w \
       -X github.com/hasansino/go42x/internal/build.xBuildCommit=${COMMIT_HASH} \
       -X github.com/hasansino/go42x/internal/build.xBuildVersion=${RELEASE_TAG}" \
-    -o go42x ./cmd/go42x
+    -o go42x .
 
 # Validate binary.
 RUN readelf -h go42x && du -h go42x && sha256sum go42x && go tool buildid go42x

@@ -32,4 +32,4 @@ jobs:
         uses: actions/go-dependency-submission@v2
         with:
           go-mod-path: go.mod
-          go-build-target: cmd/go42x/main.go
+          go-build-target: .
