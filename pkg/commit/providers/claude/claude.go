@@ -18,12 +18,14 @@ const (
 
 type Claude struct {
 	apiKey string
+	model  string
 	client *anthropic.Client
 }
 
 func NewClaude() *Claude {
 	return &Claude{
 		apiKey: os.Getenv("ANTHROPIC_API_KEY"),
+		model:  os.Getenv("ANTHROPIC_MODEL"),
 	}
 }
 
@@ -47,8 +49,13 @@ func (p *Claude) RequestMessage(ctx context.Context, prompt string) ([]string, e
 		p.client = &client
 	}
 
+	model := defaultModel
+	if len(p.model) > 0 {
+		model = p.model
+	}
+
 	message, err := p.client.Messages.New(ctx, anthropic.MessageNewParams{
-		Model:     defaultModel,
+		Model:     anthropic.Model(model),
 		MaxTokens: int64(defaultMaxTokens),
 		Messages: []anthropic.MessageParam{
 			anthropic.NewUserMessage(anthropic.NewTextBlock(prompt)),
@@ -60,7 +67,6 @@ func (p *Claude) RequestMessage(ctx context.Context, prompt string) ([]string, e
 
 	slog.Default().Debug("Received message from provider",
 		"provider", p.Name(),
-		// "response", message.RawJSON(),
 	)
 
 	var text string
@@ -88,12 +94,11 @@ func (p *Claude) RequestMessage(ctx context.Context, prompt string) ([]string, e
 	lines := strings.Split(text, "\n")
 
 	var suggestions []string
-	for _, line := range lines {
-		suggestion := strings.TrimSpace(line)
-		if suggestion != "" && !strings.HasPrefix(suggestion, "Here") &&
-			!strings.Contains(suggestion, "suggestions:") &&
-			!strings.HasPrefix(suggestion, "#") {
-			suggestions = append(suggestions, suggestion)
+	if len(lines) > 0 {
+		// Join back into a single multi-line message
+		fullMessage := strings.TrimSpace(strings.Join(lines, "\n"))
+		if fullMessage != "" {
+			suggestions = append(suggestions, fullMessage)
 		}
 	}
 

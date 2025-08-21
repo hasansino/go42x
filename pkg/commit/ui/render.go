@@ -64,15 +64,25 @@ func (m Model) renderSelectionMode() string {
 			style = selectedStyle
 		}
 
-		// Render message on single line (truncate if too long)
-		message := strings.ReplaceAll(choice.Message, "\n", " ")
-		if len(message) > 70 {
-			message = message[:67] + "..."
-		}
+		// Render full multi-line message without truncation
+		message := choice.Message
+		lines := strings.Split(message, "\n")
 
+		// Render first line with cursor and style
 		s.WriteString(cursor)
-		s.WriteString(style.Render(" " + message))
+		s.WriteString(style.Render(" " + lines[0]))
 		s.WriteString("\n")
+
+		// Render additional lines with proper indentation (no selection style)
+		for j := 1; j < len(lines); j++ {
+			line := strings.TrimSpace(lines[j])
+			if line != "" { // Only show non-empty lines
+				s.WriteString("  ") // Space for cursor alignment
+				// Use messageStyle for continuation lines (not selection style)
+				s.WriteString(messageStyle.Render(line))
+				s.WriteString("\n")
+			}
+		}
 	}
 
 	// Custom message option
@@ -123,11 +133,11 @@ func (m Model) renderManualMode() string {
 // getProviderIcon returns an appropriate icon for each provider
 func getProviderIcon(provider string) string {
 	switch strings.ToLower(provider) {
-	case "openai", "gpt":
+	case "openai":
 		return "🤖"
-	case "claude", "anthropic":
+	case "claude":
 		return "🧠"
-	case "gemini", "google":
+	case "gemini":
 		return "💎"
 	default:
 		return "🔮"

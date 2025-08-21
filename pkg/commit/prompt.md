@@ -7,8 +7,8 @@ Your task is to generate a concise commit message based on the provided git diff
 - Use conventional commits specification
 - Be concise but descriptive
 - Use maximum 100 characters per line
-- For a lot of changes use multi-line commit messages
-- Format multi-line messages with list, except first line
+- When changes affect multiple scopes (contexts, domains) use multi-line format
+- Format multi-line messages as given in the example
 - Use imperative mood (e.g., "Fix bug" instead of "Fixed bug")
 - Use present tense (e.g., "Add feature" instead of "Added feature")
 - Use lowercase letters
@@ -20,6 +20,17 @@ Your task is to generate a concise commit message based on the provided git diff
 - Do not include any emojis or special characters
 - Do not include any references to the ai model or provider
 - Output only the commit message, nothing else
+
+# Format Example
+
+```
+feat: add user authentication system
+
+- Implement JWT token-based authentication
+- Add password hashing with bcrypt
+- Create middleware for protected routes
+- Include user session management
+```
 
 # Context
 

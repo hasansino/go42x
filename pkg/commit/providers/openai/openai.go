@@ -19,12 +19,14 @@ const (
 
 type OpenAI struct {
 	apiKey string
+	model  string
 	client *openai.Client
 }
 
 func NewOpenAI() *OpenAI {
 	return &OpenAI{
 		apiKey: os.Getenv("OPENAI_API_KEY"),
+		model:  os.Getenv("OPENAI_MODEL"),
 	}
 }
 
@@ -48,11 +50,16 @@ func (p *OpenAI) RequestMessage(ctx context.Context, prompt string) ([]string, e
 		p.client = &client
 	}
 
+	model := defaultModel
+	if len(p.model) > 0 {
+		model = p.model
+	}
+
 	chatCompletion, err := p.client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
 		Messages: []openai.ChatCompletionMessageParamUnion{
 			openai.UserMessage(prompt),
 		},
-		Model:               defaultModel,
+		Model:               model,
 		N:                   openai.Int(1),
 		MaxCompletionTokens: openai.Int(defaultMaxTokens),
 	})
@@ -62,7 +69,6 @@ func (p *OpenAI) RequestMessage(ctx context.Context, prompt string) ([]string, e
 
 	slog.Default().Debug("Received message from provider",
 		"provider", p.Name(),
-		// "response", chatCompletion.RawJSON(),
 	)
 
 	var suggestions []string
@@ -83,12 +89,12 @@ func (p *OpenAI) RequestMessage(ctx context.Context, prompt string) ([]string, e
 		}
 
 		lines := strings.Split(content, "\n")
-		for _, line := range lines {
-			suggestion := strings.TrimSpace(line)
-			if suggestion != "" && !strings.HasPrefix(suggestion, "Here") &&
-				!strings.Contains(suggestion, "suggestions:") &&
-				!strings.HasPrefix(suggestion, "#") {
-				suggestions = append(suggestions, suggestion)
+
+		if len(lines) > 0 {
+			// Join back into a single multi-line message
+			fullMessage := strings.TrimSpace(strings.Join(lines, "\n"))
+			if fullMessage != "" {
+				suggestions = append(suggestions, fullMessage)
 			}
 		}
 	}
