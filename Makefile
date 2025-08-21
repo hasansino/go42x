@@ -9,7 +9,6 @@ help: Makefile
 ## setup | install dependencies
 setup:
 	@go mod tidy -e && go mod download
-	@go install github.com/go-delve/delve/cmd/dlv@latest
 	@go install go.uber.org/mock/mockgen@latest
 
 ## setup-release | install tools for release process
@@ -42,6 +41,12 @@ image:
     --build-arg "RELEASE_TAG=$(shell git describe --tags --abbrev=0 2>/dev/null || echo '')" \
 	-t ghcr.io/hasansino/go42x:dev \
 	.
+
+## generate | generate code for all modules
+# Side effects of this command should to be commited.
+generate:
+	@go mod tidy -e
+	@go generate ./...
 
 # ╭────────────────────----------------──────────╮
 # │                   Release                    │
