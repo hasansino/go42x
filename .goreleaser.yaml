@@ -113,9 +113,11 @@ release:
   make_latest: true
   name_template: "{{.ProjectName}} v{{.Version}}"
 
+# generate SBOMs for archives
 sboms:
   - artifacts: archive
 
+# sign checksums.txt
 signs:
   - cmd: cosign
     certificate: ""
