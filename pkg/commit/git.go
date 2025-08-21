@@ -2,6 +2,7 @@ package commit
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,6 +26,31 @@ type GitConfig struct {
 	GPGSign    bool
 	SigningKey string
 	GPGProgram string
+}
+
+// GPGSigner implements the go-git Signer interface using gpg command
+type GPGSigner struct {
+	gpgProgram string
+	keyID      string
+}
+
+func (g *GPGSigner) Sign(message io.Reader) ([]byte, error) {
+	// Read the message to be signed
+	messageBytes, err := io.ReadAll(message)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read message: %w", err)
+	}
+
+	// Use gpg command to sign the message, leveraging gpg-agent
+	cmd := exec.Command(g.gpgProgram, "--detach-sign", "--armor", "--local-user", g.keyID)
+	cmd.Stdin = strings.NewReader(string(messageBytes))
+
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("gpg signing failed: %w", err)
+	}
+
+	return output, nil
 }
 
 func NewGitOperations(repoPath string) (*GitOperations, error) {
@@ -308,11 +334,22 @@ func (g *GitOperations) CreateCommit(message string) error {
 		if config.SigningKey == "" {
 			return fmt.Errorf("commit.gpgsign=true but user.signingkey not configured")
 		}
-		signKey, err := g.loadGPGSigningKey(config)
-		if err != nil {
-			return fmt.Errorf("failed to load GPG signing key %s: %w", config.SigningKey, err)
+
+		// First try to use gpg-agent if available (preferred method)
+		if g.isGPGAgentAvailable(config.GPGProgram) {
+			signer, err := g.createGPGSigner(config)
+			if err != nil {
+				return fmt.Errorf("failed to create GPG signer %s: %w", config.SigningKey, err)
+			}
+			commitOptions.Signer = signer
+		} else {
+			// Fallback to direct keyring access with manual passphrase
+			signKey, err := g.loadKeyDirectly(config)
+			if err != nil {
+				return fmt.Errorf("failed to load GPG signing key %s: %w", config.SigningKey, err)
+			}
+			commitOptions.SignKey = signKey
 		}
-		commitOptions.SignKey = signKey
 	}
 
 	_, err = worktree.Commit(message, commitOptions)
@@ -323,12 +360,36 @@ func (g *GitOperations) CreateCommit(message string) error {
 	return nil
 }
 
-// loadGPGSigningKey loads the GPG private key for commit signing
-func (g *GitOperations) loadGPGSigningKey(config *GitConfig) (*openpgp.Entity, error) {
-	if config.SigningKey == "" {
-		return nil, fmt.Errorf("no signing key specified")
+// isGPGAgentAvailable checks if gpg-agent is running
+func (g *GitOperations) isGPGAgentAvailable(gpgProgram string) bool {
+	// Check if GPG_AGENT_INFO is set (older GPG versions)
+	if os.Getenv("GPG_AGENT_INFO") != "" {
+		return true
 	}
 
+	// For newer GPG versions, try to connect to the agent
+	cmd := exec.Command(gpgProgram, "--batch", "--list-secret-keys")
+	err := cmd.Run()
+	return err == nil
+}
+
+// createGPGSigner creates a GPG signer that uses gpg-agent's cached credentials
+func (g *GitOperations) createGPGSigner(config *GitConfig) (*GPGSigner, error) {
+	// Verify that the key exists and is available
+	cmd := exec.Command(config.GPGProgram, "--list-secret-keys", config.SigningKey)
+	err := cmd.Run()
+	if err != nil {
+		return nil, fmt.Errorf("signing key %s not found or not available", config.SigningKey)
+	}
+
+	return &GPGSigner{
+		gpgProgram: config.GPGProgram,
+		keyID:      config.SigningKey,
+	}, nil
+}
+
+// loadKeyDirectly loads key directly from keyring (fallback method)
+func (g *GitOperations) loadKeyDirectly(config *GitConfig) (*openpgp.Entity, error) {
 	// Try to get GPG key from user's keyring
 	keyring, err := g.getGPGKeyring(config.GPGProgram)
 	if err != nil {

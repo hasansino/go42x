@@ -29,8 +29,8 @@ func NewGo42Command(ctx context.Context, f *cmdutil.Factory) *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cmd.Help()
 		},
-		SilenceErrors: true,
-		SilenceUsage:  true,
+		SilenceErrors: false,
+		SilenceUsage:  false,
 	}
 
 	cmd.SetContext(ctx)
