@@ -27,8 +27,8 @@ builds:
       - -buildvcs=false
     ldflags:
       - -s -w
-      - -X github.com/hasansino/go42x/internal/build.xBuildVersion={{.Version}}
-      - -X github.com/hasansino/go42x/internal/build.xBuildCommit={{.Commit}}
+      - -X github.com/hasansino/go42x/internal/build.xBuildVersion={{ .Version }}
+      - -X github.com/hasansino/go42x/internal/build.xBuildCommit={{ .Commit }}
 
 archives:
   - id: go42x
