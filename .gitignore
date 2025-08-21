@@ -9,4 +9,5 @@
 dist/
 
 # artifacts
-./build/
+build/
+!internal/build
