@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/openai/openai-go/v2"
 	"github.com/openai/openai-go/v2/option"
@@ -15,8 +14,7 @@ import (
 
 const (
 	defaultModel     = shared.ChatModelGPT4Turbo
-	defaultMaxTokens = 500
-	defaultTimeout   = 5 * time.Second
+	defaultMaxTokens = 4096
 )
 
 type OpenAI struct {
@@ -46,7 +44,6 @@ func (p *OpenAI) RequestMessage(ctx context.Context, prompt string) ([]string, e
 	if p.client == nil {
 		client := openai.NewClient(
 			option.WithAPIKey(p.apiKey),
-			option.WithRequestTimeout(defaultTimeout),
 		)
 		p.client = &client
 	}
@@ -55,9 +52,9 @@ func (p *OpenAI) RequestMessage(ctx context.Context, prompt string) ([]string, e
 		Messages: []openai.ChatCompletionMessageParamUnion{
 			openai.UserMessage(prompt),
 		},
-		Model:     defaultModel,
-		N:         openai.Int(1),
-		MaxTokens: openai.Int(defaultMaxTokens),
+		Model:               defaultModel,
+		N:                   openai.Int(1),
+		MaxCompletionTokens: openai.Int(defaultMaxTokens),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create completion: %w", err)
@@ -74,13 +71,24 @@ func (p *OpenAI) RequestMessage(ctx context.Context, prompt string) ([]string, e
 		if content == "" {
 			continue
 		}
+
+		// Handle code block formatted responses
+		content = strings.TrimSpace(content)
+		if strings.HasPrefix(content, "```") && strings.HasSuffix(content, "```") {
+			lines := strings.Split(content, "\n")
+			if len(lines) > 2 {
+				// Remove first and last line (code block markers)
+				content = strings.Join(lines[1:len(lines)-1], "\n")
+			}
+		}
+
 		lines := strings.Split(content, "\n")
 		for _, line := range lines {
 			suggestion := strings.TrimSpace(line)
 			if suggestion != "" && !strings.HasPrefix(suggestion, "Here") &&
-				!strings.Contains(suggestion, "suggestions:") {
+				!strings.Contains(suggestion, "suggestions:") &&
+				!strings.HasPrefix(suggestion, "#") {
 				suggestions = append(suggestions, suggestion)
-
 			}
 		}
 	}

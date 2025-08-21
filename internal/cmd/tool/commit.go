@@ -29,7 +29,7 @@ func newCommitCommand(f *cmdutil.Factory) *cobra.Command {
 		&options.Providers, "providers", "p", []string{},
 		"Providers to use, leave empty to use all available.",
 	)
-	flags.DurationVar(&options.Timeout, "timeout", 5*time.Second, "API timeout")
+	flags.DurationVar(&options.Timeout, "timeout", 20*time.Second, "API timeout")
 	flags.StringVar(&options.CustomPrompt, "prompt", "", "Custom prompt template")
 
 	flags.BoolVarP(&options.Auto, "auto", "a", false, "Auto-commit with first suggestion")

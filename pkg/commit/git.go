@@ -148,7 +148,10 @@ func (g *GitOperations) stageWithGlob(worktree *git.Worktree, pattern string) ([
 }
 
 // Fallback: filtered staging for complex patterns
-func (g *GitOperations) stageFiltered(worktree *git.Worktree, excludePatterns, includePatterns []string) ([]string, error) {
+func (g *GitOperations) stageFiltered(
+	worktree *git.Worktree,
+	excludePatterns, includePatterns []string,
+) ([]string, error) {
 	status, err := worktree.Status()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get status: %w", err)
@@ -193,8 +196,8 @@ func (g *GitOperations) stageFiltered(worktree *git.Worktree, excludePatterns, i
 func isSimpleGlobPattern(pattern string) bool {
 	// Simple check: if it contains only *, ?, and regular chars, it's probably a simple glob
 	// Exclude patterns with path separators or complex logic
-	return !strings.Contains(pattern, "/") && 
-		   (strings.Contains(pattern, "*") || strings.Contains(pattern, "?"))
+	return !strings.Contains(pattern, "/") &&
+		(strings.Contains(pattern, "*") || strings.Contains(pattern, "?"))
 }
 
 func (g *GitOperations) GetStagedDiff() (string, error) {
@@ -243,7 +246,7 @@ func shouldExcludeFile(file string, patterns []string) bool {
 	if len(patterns) == 0 {
 		return false
 	}
-	
+
 	basename := filepath.Base(file)
 	for _, pattern := range patterns {
 		// Fast string containment check first (most common case)
@@ -265,7 +268,7 @@ func shouldIncludeFile(file string, patterns []string) bool {
 	if len(patterns) == 0 {
 		return false
 	}
-	
+
 	basename := filepath.Base(file)
 	for _, pattern := range patterns {
 		// Fast string containment check first (most common case)

@@ -6,15 +6,13 @@ import (
 	"log/slog"
 	"os"
 	"strings"
-	"time"
 
 	"google.golang.org/genai"
 )
 
 const (
-	defaultModel     = "gemini-2.5-flash"
-	defaultMaxTokens = 500
-	defaultTimeout   = 5 * time.Second
+	defaultModel     = "gemini-1.5-flash"
+	defaultMaxTokens = 4096
 )
 
 type Gemini struct {
@@ -55,12 +53,8 @@ func (p *Gemini) RequestMessage(ctx context.Context, prompt string) ([]string, e
 		genai.NewContentFromText(prompt, "user"),
 	}
 
-	timeout := defaultTimeout
 	resp, err := p.client.Models.GenerateContent(ctx, defaultModel, contents, &genai.GenerateContentConfig{
 		MaxOutputTokens: defaultMaxTokens,
-		HTTPOptions: &genai.HTTPOptions{
-			Timeout: &timeout,
-		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate content: %w", err)
@@ -68,22 +62,43 @@ func (p *Gemini) RequestMessage(ctx context.Context, prompt string) ([]string, e
 
 	slog.Default().Debug("Received message from provider",
 		"provider", p.Name(),
-		"response", resp.SDKHTTPResponse.Body,
+		"response", resp.Text(),
 	)
 
 	if len(resp.Candidates) == 0 {
-		return nil, fmt.Errorf("no content received from gemini")
+		return nil, fmt.Errorf("no candidates received from gemini")
+	}
+
+	candidate := resp.Candidates[0]
+
+	if candidate.Content == nil {
+		return nil, fmt.Errorf("no content in gemini candidate, finish_reason: %v", candidate.FinishReason)
 	}
 
 	var text string
-	for _, part := range resp.Candidates[0].Content.Parts {
+	for _, part := range candidate.Content.Parts {
 		if part.Text != "" {
 			text += part.Text
 		}
 	}
 
 	if text == "" {
-		return nil, fmt.Errorf("no text content received from gemini")
+		if candidate.FinishReason == "MAX_TOKENS" {
+			return nil, fmt.Errorf(
+				"gemini response truncated due to token limit (finish_reason: MAX_TOKENS) - try reducing prompt size",
+			)
+		}
+		return nil, fmt.Errorf("no text content received from gemini (finish_reason: %v)", candidate.FinishReason)
+	}
+
+	// Handle code block formatted responses
+	text = strings.TrimSpace(text)
+	if strings.HasPrefix(text, "```") && strings.HasSuffix(text, "```") {
+		lines := strings.Split(text, "\n")
+		if len(lines) > 2 {
+			// Remove first and last line (code block markers)
+			text = strings.Join(lines[1:len(lines)-1], "\n")
+		}
 	}
 
 	lines := strings.Split(text, "\n")
@@ -91,7 +106,9 @@ func (p *Gemini) RequestMessage(ctx context.Context, prompt string) ([]string, e
 	var suggestions []string
 	for _, line := range lines {
 		suggestion := strings.TrimSpace(line)
-		if suggestion != "" && !strings.HasPrefix(suggestion, "Here") && !strings.Contains(suggestion, "suggestions:") {
+		if suggestion != "" && !strings.HasPrefix(suggestion, "Here") &&
+			!strings.Contains(suggestion, "suggestions:") &&
+			!strings.HasPrefix(suggestion, "#") {
 			suggestions = append(suggestions, suggestion)
 		}
 	}

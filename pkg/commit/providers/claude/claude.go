@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
@@ -14,8 +13,7 @@ import (
 
 const (
 	defaultModel     = "claude-3-5-haiku-latest"
-	defaultMaxTokens = 500
-	defaultTimeout   = 5 * time.Second
+	defaultMaxTokens = 4096
 )
 
 type Claude struct {
@@ -45,7 +43,6 @@ func (p *Claude) RequestMessage(ctx context.Context, prompt string) ([]string, e
 	if p.client == nil {
 		client := anthropic.NewClient(
 			option.WithAPIKey(p.apiKey),
-			option.WithRequestTimeout(defaultTimeout),
 		)
 		p.client = &client
 	}
@@ -78,12 +75,24 @@ func (p *Claude) RequestMessage(ctx context.Context, prompt string) ([]string, e
 		return nil, fmt.Errorf("no text content received from Claude")
 	}
 
+	// Handle code block formatted responses
+	text = strings.TrimSpace(text)
+	if strings.HasPrefix(text, "```") && strings.HasSuffix(text, "```") {
+		lines := strings.Split(text, "\n")
+		if len(lines) > 2 {
+			// Remove first and last line (code block markers)
+			text = strings.Join(lines[1:len(lines)-1], "\n")
+		}
+	}
+
 	lines := strings.Split(text, "\n")
 
 	var suggestions []string
 	for _, line := range lines {
 		suggestion := strings.TrimSpace(line)
-		if suggestion != "" && !strings.HasPrefix(suggestion, "Here") && !strings.Contains(suggestion, "suggestions:") {
+		if suggestion != "" && !strings.HasPrefix(suggestion, "Here") &&
+			!strings.Contains(suggestion, "suggestions:") &&
+			!strings.HasPrefix(suggestion, "#") {
 			suggestions = append(suggestions, suggestion)
 		}
 	}
