@@ -2,23 +2,18 @@ package cmdutil
 
 import (
 	"context"
-	"log/slog"
-	"net/http"
 
 	"github.com/spf13/pflag"
 )
 
 type Factory struct {
-	ctx        context.Context
-	logger     *slog.Logger
-	options    *Options
-	httpClient *http.Client
+	ctx     context.Context
+	options *Options
 }
 
-func NewFactory(ctx context.Context, logger *slog.Logger) *Factory {
+func NewFactory(ctx context.Context) *Factory {
 	f := &Factory{
 		ctx:     ctx,
-		logger:  logger,
 		options: new(Options),
 	}
 	return f
@@ -26,10 +21,6 @@ func NewFactory(ctx context.Context, logger *slog.Logger) *Factory {
 
 func (f *Factory) Context() context.Context {
 	return f.ctx
-}
-
-func (f *Factory) Logger() *slog.Logger {
-	return f.logger
 }
 
 func (f *Factory) Options() *Options {

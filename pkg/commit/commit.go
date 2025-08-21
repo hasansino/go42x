@@ -11,16 +11,13 @@ import (
 type Options struct {
 	Logger *slog.Logger
 	// providers
-	Providers      []string
-	MaxSuggestions int
-	CustomPrompt   string
-	Timeout        time.Duration
+	Providers    []string
+	CustomPrompt string
+	Timeout      time.Duration
 	// operational
-	Interactive bool
-	Auto        bool
-	DryRun      bool
+	Auto   bool
+	DryRun bool
 	// git
-	StageAll        bool
 	Unstage         bool
 	ExcludePatterns []string
 	IncludePatterns []string
@@ -45,38 +42,34 @@ func NewCommitService(options *Options, repoPath string) (*Service, error) {
 	return &Service{
 		options:   options,
 		gitOps:    git,
-		aiService: NewAIService(),
+		aiService: NewAIService(options.Logger, options.Timeout),
 	}, nil
 }
 
-func (s *Service) Execute() error {
-	if len(s.aiService.GetAvailableProviders()) == 0 {
+func (s *Service) Execute(ctx context.Context) error {
+	if len(s.aiService.GetProviders()) == 0 {
 		return fmt.Errorf("no api keys found in environment")
 	}
 
-	if s.options.Unstage {
-		s.options.Logger.Debug("Unstaging files...")
-		if err := s.gitOps.UnstageAll(); err != nil {
-			return fmt.Errorf("failed to unstage files: %w", err)
-		}
+	s.options.Logger.Debug("Unstaging all files...")
+
+	if err := s.gitOps.UnstageAll(); err != nil {
+		return fmt.Errorf("failed to unstage files: %w", err)
 	}
 
-	if s.options.StageAll {
-		s.options.Logger.Debug("Staging files...")
-		stagedFiles, err := s.gitOps.StageFiles(s.options.ExcludePatterns, s.options.IncludePatterns)
-		if err != nil {
-			return fmt.Errorf("failed to stage files: %w", err)
-		}
+	s.options.Logger.Debug("Staging files...")
 
-		if len(stagedFiles) == 0 {
-			s.options.Logger.Info("No files to commit")
-			return nil
-		}
-
-		s.options.Logger.Debug("Staged files",
-			"count", len(stagedFiles),
-			"files", strings.Join(stagedFiles, ", "))
+	stagedFiles, err := s.gitOps.StageFiles(s.options.ExcludePatterns, s.options.IncludePatterns)
+	if err != nil {
+		return fmt.Errorf("failed to stage files: %w", err)
 	}
+
+	if len(stagedFiles) == 0 {
+		s.options.Logger.Info("No files to commit")
+		return nil
+	}
+
+	s.options.Logger.Debug("Getting staged diff...")
 
 	diff, err := s.gitOps.GetStagedDiff()
 	if err != nil {
@@ -93,31 +86,12 @@ func (s *Service) Execute() error {
 		return fmt.Errorf("failed to get current branch: %w", err)
 	}
 
-	status, err := s.gitOps.GetWorkingTreeStatus()
-	if err != nil {
-		return fmt.Errorf("failed to get status: %w", err)
-	}
+	s.options.Logger.Debug("Requesting commit messages...")
 
-	var stagedFiles []string
-	for file := range status {
-		if status.File(file).Staging != 0 {
-			stagedFiles = append(stagedFiles, file)
-		}
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), s.options.Timeout)
-	defer cancel()
-
-	s.options.Logger.Debug("Generating commit messages...")
-
-	suggestions, err := s.aiService.GenerateCommitSuggestions(
+	messages, err := s.aiService.GenerateCommitMessages(
 		ctx,
-		diff,
-		branch,
-		stagedFiles,
-		s.options.CustomPrompt,
-		s.options.Providers,
-		s.options.MaxSuggestions,
+		diff, branch, stagedFiles,
+		s.options.Providers, s.options.CustomPrompt,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to generate suggestions: %w", err)
@@ -126,22 +100,16 @@ func (s *Service) Execute() error {
 	var commitMessage string
 
 	if s.options.Auto {
-		commitMessage = s.getFirstValidSuggestion(suggestions)
+		commitMessage = s.getRandomMessage(messages)
 		if commitMessage == "" {
 			return fmt.Errorf("no valid suggestions available for auto-commit")
 		}
 		s.options.Logger.Debug("Auto-selected commit message", "message", commitMessage)
-	} else if s.options.Interactive {
-		s.options.Logger.Debug("Opening interactive UI...")
-
-		commitMessage, err = RunInteractiveUI(suggestions)
-		if err != nil {
-			return fmt.Errorf("failed to run interactive UI: %w", err)
-		}
 	} else {
-		commitMessage = s.getFirstValidSuggestion(suggestions)
-		if commitMessage == "" {
-			return fmt.Errorf("no valid suggestions available")
+		s.options.Logger.Debug("Opening interactive UI...")
+		commitMessage, err = RunInteractiveUI(messages)
+		if err != nil {
+			return fmt.Errorf("failed to run interactive ui: %w", err)
 		}
 	}
 
@@ -161,16 +129,10 @@ func (s *Service) Execute() error {
 	return nil
 }
 
-func (s *Service) getFirstValidSuggestion(suggestions map[string][]string) string {
-	providerOrder := []string{"OpenAI", "Claude", "Gemini"}
-	for _, provider := range providerOrder {
-		if providerSuggestions, exists := suggestions[provider]; exists {
-			for _, suggestion := range providerSuggestions {
-				if suggestion != "" && !strings.HasPrefix(suggestion, "Error:") {
-					return suggestion
-				}
-			}
-		}
+func (s *Service) getRandomMessage(messages map[string]string) string {
+	// map provides random access, so we can just return the first message
+	for _, msg := range messages {
+		return msg
 	}
 	return ""
 }

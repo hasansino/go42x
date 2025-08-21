@@ -6,6 +6,6 @@ import "context"
 
 type providerAccessor interface {
 	Name() string
-	GenerateSuggestions(ctx context.Context, prompt string, maxSuggestions int) ([]string, error)
 	IsAvailable() bool
+	RequestMessage(ctx context.Context, prompt string) ([]string, error)
 }

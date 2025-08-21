@@ -1,4 +1,4 @@
-package tools
+package tool
 
 import (
 	"github.com/spf13/cobra"
@@ -8,7 +8,7 @@ import (
 
 func NewToolsCommand(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "tools",
+		Use:   "tool",
 		Short: "Miscellaneous tools",
 		Long:  "Miscellaneous tools",
 		RunE: func(cmd *cobra.Command, args []string) error {

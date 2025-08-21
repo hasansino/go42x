@@ -40,21 +40,6 @@ func (m *MockproviderAccessor) EXPECT() *MockproviderAccessorMockRecorder {
 	return m.recorder
 }
 
-// GenerateSuggestions mocks base method.
-func (m *MockproviderAccessor) GenerateSuggestions(ctx context.Context, prompt string, maxSuggestions int) ([]string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GenerateSuggestions", ctx, prompt, maxSuggestions)
-	ret0, _ := ret[0].([]string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GenerateSuggestions indicates an expected call of GenerateSuggestions.
-func (mr *MockproviderAccessorMockRecorder) GenerateSuggestions(ctx, prompt, maxSuggestions any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateSuggestions", reflect.TypeOf((*MockproviderAccessor)(nil).GenerateSuggestions), ctx, prompt, maxSuggestions)
-}
-
 // IsAvailable mocks base method.
 func (m *MockproviderAccessor) IsAvailable() bool {
 	m.ctrl.T.Helper()
@@ -81,4 +66,19 @@ func (m *MockproviderAccessor) Name() string {
 func (mr *MockproviderAccessorMockRecorder) Name() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockproviderAccessor)(nil).Name))
+}
+
+// RequestMessage mocks base method.
+func (m *MockproviderAccessor) RequestMessage(ctx context.Context, prompt string) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RequestMessage", ctx, prompt)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RequestMessage indicates an expected call of RequestMessage.
+func (mr *MockproviderAccessorMockRecorder) RequestMessage(ctx, prompt any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RequestMessage", reflect.TypeOf((*MockproviderAccessor)(nil).RequestMessage), ctx, prompt)
 }

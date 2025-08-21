@@ -154,15 +154,12 @@ func (g *GitOperations) CreateCommit(message string) error {
 
 func shouldExcludeFile(file string, patterns []string) bool {
 	for _, pattern := range patterns {
-		// Try direct pattern match
 		if matched, _ := filepath.Match(pattern, file); matched {
 			return true
 		}
-		// Try matching just the filename
 		if matched, _ := filepath.Match(pattern, filepath.Base(file)); matched {
 			return true
 		}
-		// Try substring match
 		if strings.Contains(file, pattern) {
 			return true
 		}
@@ -172,15 +169,12 @@ func shouldExcludeFile(file string, patterns []string) bool {
 
 func shouldIncludeFile(file string, patterns []string) bool {
 	for _, pattern := range patterns {
-		// Try direct pattern match
 		if matched, _ := filepath.Match(pattern, file); matched {
 			return true
 		}
-		// Try matching just the filename
 		if matched, _ := filepath.Match(pattern, filepath.Base(file)); matched {
 			return true
 		}
-		// Try substring match
 		if strings.Contains(file, pattern) {
 			return true
 		}

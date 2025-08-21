@@ -1,117 +1,89 @@
 package openai
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
+	"log/slog"
 	"os"
 	"strings"
 
-	"github.com/hasansino/go42x/internal/cmdutil"
+	"github.com/openai/openai-go/v2"
+	"github.com/openai/openai-go/v2/option"
+	"github.com/openai/openai-go/v2/shared"
 )
 
 const (
-	openAIAPI    = "https://api.openai.com/v1/chat/completions"
-	defaultModel = "gpt-5-nano"
+	defaultModel     = shared.ChatModelGPT4Turbo
+	defaultMaxTokens = 500
 )
 
 type OpenAI struct {
-	factory *cmdutil.Factory
-	apiKey  string
-	client  *http.Client
-}
-
-type openaiRequest struct {
-	Model    string          `json:"model"`
-	Messages []openaiMessage `json:"messages"`
-	N        int             `json:"n"`
-}
-
-type openaiMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-}
-
-type openaiResponse struct {
-	Choices []struct {
-		Message struct {
-			Content string `json:"content"`
-		} `json:"message"`
-	} `json:"choices"`
-	Error *struct {
-		Message string `json:"message"`
-	} `json:"error"`
+	apiKey string
+	client *openai.Client
 }
 
 func NewOpenAI() *OpenAI {
 	return &OpenAI{
 		apiKey: os.Getenv("OPENAI_API_KEY"),
-		client: new(http.Client),
 	}
 }
 
 func (p *OpenAI) Name() string {
-	return "OpenAI"
+	return "openai"
 }
 
 func (p *OpenAI) IsAvailable() bool {
 	return p.apiKey != ""
 }
 
-func (p *OpenAI) GenerateSuggestions(ctx context.Context, prompt string, maxSuggestions int) ([]string, error) {
+func (p *OpenAI) RequestMessage(ctx context.Context, prompt string) ([]string, error) {
 	if !p.IsAvailable() {
-		return nil, fmt.Errorf("OpenAI api key not available")
+		return nil, fmt.Errorf("openai api key not found")
 	}
 
-	reqBody := openaiRequest{
-		Model: defaultModel,
-		Messages: []openaiMessage{
-			{Role: "user", Content: prompt},
+	if p.client == nil {
+		client := openai.NewClient(
+			option.WithAPIKey(p.apiKey),
+		)
+		p.client = &client
+	}
+
+	chatCompletion, err := p.client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
+		Messages: []openai.ChatCompletionMessageParamUnion{
+			openai.UserMessage(prompt),
 		},
-		N: maxSuggestions,
-	}
-
-	jsonData, err := json.Marshal(reqBody)
+		Model:     defaultModel,
+		N:         openai.Int(1),
+		MaxTokens: openai.Int(defaultMaxTokens),
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
+		return nil, fmt.Errorf("failed to create completion: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(
-		ctx,
-		"POST",
-		openAIAPI,
-		bytes.NewBuffer(jsonData),
+	slog.Default().Debug("Received message from provider",
+		"provider", p.Name(),
+		"response", chatCompletion.RawJSON(),
 	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+p.apiKey)
-
-	resp, err := p.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to make request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	var openaiResp openaiResponse
-	if err := json.NewDecoder(resp.Body).Decode(&openaiResp); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	if openaiResp.Error != nil {
-		return nil, fmt.Errorf("OpenAI API error: %s", openaiResp.Error.Message)
-	}
 
 	var suggestions []string
-	for _, choice := range openaiResp.Choices {
-		suggestion := strings.TrimSpace(choice.Message.Content)
-		if suggestion != "" {
-			suggestions = append(suggestions, suggestion)
+	for _, choice := range chatCompletion.Choices {
+		content := choice.Message.Content
+		if content == "" {
+			continue
 		}
+		lines := strings.Split(content, "\n")
+		for _, line := range lines {
+			suggestion := strings.TrimSpace(line)
+			if suggestion != "" && !strings.HasPrefix(suggestion, "Here") &&
+				!strings.Contains(suggestion, "suggestions:") {
+				suggestions = append(suggestions, suggestion)
+
+			}
+		}
+	}
+
+	if len(suggestions) == 0 && len(chatCompletion.Choices) > 0 {
+		suggestions = []string{strings.TrimSpace(chatCompletion.Choices[0].Message.Content)}
 	}
 
 	return suggestions, nil

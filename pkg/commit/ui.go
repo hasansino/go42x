@@ -9,7 +9,7 @@ import (
 )
 
 type UIModel struct {
-	suggestions map[string][]string
+	suggestions map[string]string
 	cursor      int
 	selected    int
 	manualMode  bool
@@ -61,7 +61,7 @@ var (
 			Margin(1, 0)
 )
 
-func NewUIModel(suggestions map[string][]string) UIModel {
+func NewUIModel(suggestions map[string]string) UIModel {
 	return UIModel{
 		suggestions: suggestions,
 		cursor:      0,
@@ -244,24 +244,14 @@ func (m UIModel) renderManualMode() string {
 func (m UIModel) getAllChoices() []Choice {
 	var choices []Choice
 
-	providerOrder := []string{"OpenAI", "Claude", "Gemini"}
-
-	for _, provider := range providerOrder {
-		suggestions, exists := m.suggestions[provider]
-		if !exists {
-			continue
-		}
-
-		for i, suggestion := range suggestions {
-			if strings.HasPrefix(suggestion, "Error:") {
-				continue
-			}
-			choices = append(choices, Choice{
-				Provider: provider,
-				Message:  suggestion,
-				Index:    i,
-			})
-		}
+	var i int
+	for providerName, message := range m.suggestions {
+		choices = append(choices, Choice{
+			Provider: providerName,
+			Message:  message,
+			Index:    i,
+		})
+		i++
 	}
 
 	return choices
@@ -275,7 +265,7 @@ func (m UIModel) IsDone() bool {
 	return m.done
 }
 
-func RunInteractiveUI(suggestions map[string][]string) (string, error) {
+func RunInteractiveUI(suggestions map[string]string) (string, error) {
 	model := NewUIModel(suggestions)
 
 	program := tea.NewProgram(model, tea.WithAltScreen())

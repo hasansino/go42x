@@ -1,4 +1,3 @@
-<!-- markdownlint-disable MD013 MD033 MD041 -->
 <div align="center"><pre>
 ░██████╗░░█████╗░░░██╗██╗░█████═╗░██╗░░██╗░
 ██╔════╝░██╔══██╗░██╔╝╚█║█════██║░╚██╗██╔╝░
@@ -13,7 +12,6 @@
 <a href="https://goreportcard.com/report/github.com/hasansino/go42x"><img src="https://goreportcard.com/badge/github.com/hasansino/go42x" alt="goreport"></a>
 <a href="https://github.com/hasansino/go42x/releases"><img src="https://img.shields.io/github/v/release/hasansino/go42x" alt="release"></a>
 </p>
-<!-- markdownlint-enable MD013 MD033 MD041 -->
 
 # go42x
 

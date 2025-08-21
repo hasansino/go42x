@@ -3,10 +3,16 @@ package gemini
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 
 	"google.golang.org/genai"
+)
+
+const (
+	defaultModel     = "gemini-2.5-flash"
+	defaultMaxTokens = 500
 )
 
 type Gemini struct {
@@ -21,16 +27,16 @@ func NewGemini() *Gemini {
 }
 
 func (p *Gemini) Name() string {
-	return "Gemini"
+	return "gemini"
 }
 
 func (p *Gemini) IsAvailable() bool {
 	return p.apiKey != ""
 }
 
-func (p *Gemini) GenerateSuggestions(ctx context.Context, prompt string, maxSuggestions int) ([]string, error) {
+func (p *Gemini) RequestMessage(ctx context.Context, prompt string) ([]string, error) {
 	if !p.IsAvailable() {
-		return nil, fmt.Errorf("google api key not available")
+		return nil, fmt.Errorf("google api key not found")
 	}
 
 	if p.client == nil {
@@ -43,20 +49,21 @@ func (p *Gemini) GenerateSuggestions(ctx context.Context, prompt string, maxSugg
 		p.client = client
 	}
 
-	enhancedPrompt := fmt.Sprintf(
-		"%s\n\nPlease provide %d different commit message suggestions, each on a new line.",
-		prompt,
-		maxSuggestions,
-	)
-
 	contents := []*genai.Content{
-		genai.NewContentFromText(enhancedPrompt, "user"),
+		genai.NewContentFromText(prompt, "user"),
 	}
 
-	resp, err := p.client.Models.GenerateContent(ctx, "gemini-pro", contents, nil)
+	resp, err := p.client.Models.GenerateContent(ctx, defaultModel, contents, &genai.GenerateContentConfig{
+		MaxOutputTokens: defaultMaxTokens,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate content: %w", err)
 	}
+
+	slog.Default().Debug("Received message from provider",
+		"provider", p.Name(),
+		"response", resp.SDKHTTPResponse.Body,
+	)
 
 	if len(resp.Candidates) == 0 {
 		return nil, fmt.Errorf("no content received from gemini")
@@ -80,9 +87,6 @@ func (p *Gemini) GenerateSuggestions(ctx context.Context, prompt string, maxSugg
 		suggestion := strings.TrimSpace(line)
 		if suggestion != "" && !strings.HasPrefix(suggestion, "Here") && !strings.Contains(suggestion, "suggestions:") {
 			suggestions = append(suggestions, suggestion)
-		}
-		if len(suggestions) >= maxSuggestions {
-			break
 		}
 	}
 

@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/hasansino/go42x/internal/cmd/generate"
-	"github.com/hasansino/go42x/internal/cmd/tools"
+	"github.com/hasansino/go42x/internal/cmd/tool"
 	"github.com/hasansino/go42x/internal/cmdutil"
 )
 
@@ -42,7 +42,7 @@ func NewGo42Command(ctx context.Context, f *cmdutil.Factory) *cobra.Command {
 
 	cmd.AddCommand(NewVersionCommand())
 	cmd.AddCommand(generate.NewGenerateCommand(f))
-	cmd.AddCommand(tools.NewToolsCommand(f))
+	cmd.AddCommand(tool.NewToolsCommand(f))
 
 	return cmd
 }
@@ -51,8 +51,9 @@ func Execute() int {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
-	logger := initLogging()
-	factory := cmdutil.NewFactory(ctx, logger)
+	initLogging()
+
+	factory := cmdutil.NewFactory(ctx)
 	cmd := NewGo42Command(ctx, factory)
 
 	var execErr error
@@ -68,22 +69,16 @@ func Execute() int {
 	return exitOK
 }
 
-func initLogging() *slog.Logger {
+func initLogging() {
 	loggerOpts := &tint.Options{
-		AddSource:  true,
-		Level:      slog.LevelInfo,
-		TimeFormat: time.Kitchen,
+		AddSource:  false,
+		Level:      slog.LevelDebug,
+		TimeFormat: time.TimeOnly,
 	}
-
-	slogHandler := tint.NewHandler(os.Stdout, loggerOpts)
-	logger := slog.New(slogHandler)
-
+	logger := slog.New(tint.NewHandler(os.Stdout, loggerOpts))
 	// Any call to log.* will be redirected to slog.Error.
 	// Because of that, we need to agree to use `log` package only for errors.
 	slog.SetLogLoggerLevel(slog.LevelError)
-
 	// for both 'log' and 'slog'
 	slog.SetDefault(logger)
-
-	return logger
 }
