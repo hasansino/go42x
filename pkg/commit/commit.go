@@ -49,45 +49,50 @@ func NewCommitService(options *Options, repoPath string) (*Service, error) {
 
 func (s *Service) Execute(ctx context.Context) error {
 	if len(s.aiService.GetProviders()) == 0 {
+		s.options.Logger.WarnContext(ctx, "No providers configured")
 		return fmt.Errorf("no api keys found in environment")
 	}
 
-	s.options.Logger.Debug("Unstaging all files...")
+	s.options.Logger.DebugContext(ctx, "Unstaging all files...")
 
 	if err := s.gitOps.UnstageAll(); err != nil {
+		s.options.Logger.ErrorContext(ctx, "Failed to unstage files", "error", err)
 		return fmt.Errorf("failed to unstage files: %w", err)
 	}
 
-	s.options.Logger.Debug("Staging files...")
+	s.options.Logger.DebugContext(ctx, "Staging files...")
 
 	stagedFiles, err := s.gitOps.StageFiles(s.options.ExcludePatterns, s.options.IncludePatterns)
 	if err != nil {
+		s.options.Logger.ErrorContext(ctx, "Failed to stage files", "error", err)
 		return fmt.Errorf("failed to stage files: %w", err)
 	}
 
 	if len(stagedFiles) == 0 {
-		s.options.Logger.Info("No files to commit")
+		s.options.Logger.WarnContext(ctx, "No files to commit")
 		return nil
 	}
 
-	s.options.Logger.Debug("Getting staged diff...")
+	s.options.Logger.DebugContext(ctx, "Getting staged diff...")
 
 	diff, err := s.gitOps.GetStagedDiff()
 	if err != nil {
+		s.options.Logger.ErrorContext(ctx, "Failed to get staged diff", "error", err)
 		return fmt.Errorf("failed to get diff: %w", err)
 	}
 
 	if strings.TrimSpace(diff) == "" {
-		s.options.Logger.Info("No changes staged for commit")
+		s.options.Logger.WarnContext(ctx, "No changes staged for commit")
 		return nil
 	}
 
 	branch, err := s.gitOps.GetCurrentBranch()
 	if err != nil {
+		s.options.Logger.ErrorContext(ctx, "Failed to get current branch", "error", err)
 		return fmt.Errorf("failed to get current branch: %w", err)
 	}
 
-	s.options.Logger.Debug("Requesting commit messages...")
+	s.options.Logger.DebugContext(ctx, "Requesting commit messages...")
 
 	messages, err := s.aiService.GenerateCommitMessages(
 		ctx,
@@ -96,6 +101,7 @@ func (s *Service) Execute(ctx context.Context) error {
 		s.options.First,
 	)
 	if err != nil {
+		s.options.Logger.ErrorContext(ctx, "Failed to generate commit messages", "error", err)
 		return fmt.Errorf("failed to generate suggestions: %w", err)
 	}
 
@@ -104,13 +110,15 @@ func (s *Service) Execute(ctx context.Context) error {
 	if s.options.Auto {
 		commitMessage = s.getRandomMessage(messages)
 		if commitMessage == "" {
+			s.options.Logger.WarnContext(ctx, "No valid suggestions available for auto-commit")
 			return fmt.Errorf("no valid suggestions available for auto-commit")
 		}
-		s.options.Logger.Debug("Auto-selected commit message", "message", commitMessage)
+		s.options.Logger.DebugContext(ctx, "Auto-selected commit message", "message", commitMessage)
 	} else {
-		s.options.Logger.Debug("Using interactive mode...")
+		s.options.Logger.DebugContext(ctx, "Using interactive mode...")
 		commitMessage, err = RunInteractiveUI(messages)
 		if err != nil {
+			s.options.Logger.ErrorContext(ctx, "Failed to enter interactive mode", "error", err)
 			return fmt.Errorf("failed to run interactive ui: %w", err)
 		}
 	}
@@ -126,9 +134,10 @@ func (s *Service) Execute(ctx context.Context) error {
 
 	if !s.options.DryRun {
 		if err := s.gitOps.CreateCommit(commitMessage); err != nil {
+			s.options.Logger.ErrorContext(ctx, "Failed to create commit", "error", err)
 			return fmt.Errorf("failed to create commit: %w", err)
 		}
-		s.options.Logger.Info("Commit created", "message", commitMessage)
+		s.options.Logger.InfoContext(ctx, "Commit created", "message", commitMessage)
 	}
 
 	return nil

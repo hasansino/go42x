@@ -424,20 +424,20 @@ func (g *GitOperations) matchesSigningKey(entity *openpgp.Entity, signingKey str
 // decryptPrivateKey prompts for passphrase and decrypts the GPG private key
 func (g *GitOperations) decryptPrivateKey(entity *openpgp.Entity, keyID string) error {
 	fmt.Printf("Enter passphrase for GPG key %s: ", keyID)
-	
+
 	// Read passphrase securely (without echoing to terminal)
 	passphrase, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		return fmt.Errorf("failed to read passphrase: %w", err)
 	}
 	fmt.Println() // Add newline after password input
-	
+
 	// Attempt to decrypt the private key with the passphrase
 	err = entity.PrivateKey.Decrypt(passphrase)
 	if err != nil {
 		return fmt.Errorf("incorrect passphrase or decryption failed: %w", err)
 	}
-	
+
 	// Also decrypt subkeys if they exist
 	for _, subkey := range entity.Subkeys {
 		if subkey.PrivateKey != nil && subkey.PrivateKey.Encrypted {
@@ -447,7 +447,7 @@ func (g *GitOperations) decryptPrivateKey(entity *openpgp.Entity, keyID string) 
 			}
 		}
 	}
-	
+
 	return nil
 }
 
