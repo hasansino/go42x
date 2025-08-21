@@ -23,7 +23,7 @@ setup-release:
 
 ## test-unit | run unit tests
 # -count=1 is needed to prevent caching of test results.
-test-unit:
+test:
 	@go test -count=1 -v -race $(shell go list ./... | grep -v './tests')
 
 ## build | build development version of binary
