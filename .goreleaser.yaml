@@ -10,7 +10,7 @@ before:
 
 builds:
   - id: go42x
-    main: ./cmd/go42x/main.go
+    main: .
     binary: go42x
     env:
       - CGO_ENABLED=0
