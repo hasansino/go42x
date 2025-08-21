@@ -3,7 +3,7 @@ module github.com/hasansino/go42x
 go 1.24.6
 
 require (
-	github.com/ProtonMail/go-crypto v1.1.6
+	github.com/ProtonMail/go-crypto v1.3.0
 	github.com/anthropics/anthropic-sdk-go v1.9.1
 	github.com/charmbracelet/bubbletea v1.3.6
 	github.com/charmbracelet/lipgloss v1.1.0
