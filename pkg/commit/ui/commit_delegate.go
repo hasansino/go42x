@@ -57,7 +57,7 @@ func (d commitDelegate) Spacing() int {
 	return d.spacing
 }
 
-func (d commitDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
+func (d commitDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd {
 	return nil
 }
 
@@ -67,45 +67,24 @@ func (d commitDelegate) Render(w io.Writer, m list.Model, index int, item list.I
 		return
 	}
 
-	var title, desc string
-	var titleStyle, descStyle lipgloss.Style
-
+	var content strings.Builder
 	isSelected := index == m.Index()
 	isFiltered := m.FilterState() == list.Filtering || m.FilterState() == list.FilterApplied
 
-	// Determine styles based on state
-	if isSelected {
-		titleStyle = d.styles.SelectedTitle
-		descStyle = d.styles.SelectedDesc
-	} else if isFiltered && m.FilterState() != list.FilterApplied {
-		titleStyle = d.styles.DimmedTitle
-		descStyle = d.styles.DimmedDesc
-	} else {
-		titleStyle = d.styles.NormalTitle
-		descStyle = d.styles.NormalDesc
-	}
+	// Build title without arrow indicator
+	title := commit.Title()
 
-	// Format title
-	if isSelected {
-		title = "> " + commit.Title()
-	} else {
-		title = "  " + commit.Title()
-	}
-
-	// Format description - show multi-line for selected items
+	// Build description
+	var desc string
 	if commit.provider == "manual" {
-		desc = "    " + commit.Description()
+		desc = commit.Description()
 	} else if isSelected && len(commit.lines) > 1 {
 		// Show full multi-line message when selected
 		var descLines []string
 		for i, line := range commit.lines {
-			if i == 0 {
-				descLines = append(descLines, "    "+line)
-			} else {
-				descLines = append(descLines, "    "+line)
-			}
-			if i >= 4 { // Limit to 5 lines in the list
-				descLines = append(descLines, "    ...")
+			descLines = append(descLines, line)
+			if i >= 10 { // Limit to 5 lines in the list
+				descLines = append(descLines, "...")
 				break
 			}
 		}
@@ -119,12 +98,71 @@ func (d commitDelegate) Render(w io.Writer, m list.Model, index int, item list.I
 				firstLine = firstLine[:57] + "..."
 			}
 		}
-		desc = "    " + firstLine
+		desc = firstLine
 		if len(commit.lines) > 1 {
 			desc += fmt.Sprintf(" (+%d lines)", len(commit.lines)-1)
 		}
 	}
 
-	// Render
-	_, _ = fmt.Fprintf(w, "%s\n%s", titleStyle.Render(title), descStyle.Render(desc))
+	// Apply styles based on selection state
+	if isSelected {
+		// Highlight with left border only, no background
+		selectedStyle := lipgloss.NewStyle().
+			BorderLeft(true).
+			BorderStyle(lipgloss.ThickBorder()).
+			BorderForeground(lipgloss.Color("170")). // Purple accent on left
+			PaddingLeft(1).
+			PaddingRight(2).
+			Width(m.Width() - 8) // Account for list padding
+
+		titleStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("170")).
+			Bold(true)
+
+		descStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("245"))
+
+		content.WriteString(titleStyle.Render(title))
+		if desc != "" {
+			content.WriteString("\n")
+			content.WriteString(descStyle.Render(desc))
+		}
+
+		_, _ = fmt.Fprint(w, selectedStyle.Render(content.String()))
+	} else {
+		// Normal items without highlight
+		var itemStyle lipgloss.Style
+
+		if isFiltered && m.FilterState() != list.FilterApplied {
+			// Dimmed items during filtering
+			itemStyle = lipgloss.NewStyle().
+				PaddingLeft(3). // Extra padding to align with selected items
+				PaddingRight(2)
+
+			titleStyle := d.styles.DimmedTitle
+			descStyle := d.styles.DimmedDesc
+
+			content.WriteString(titleStyle.Render(title))
+			if desc != "" {
+				content.WriteString("\n")
+				content.WriteString(descStyle.Render(desc))
+			}
+		} else {
+			// Normal items
+			itemStyle = lipgloss.NewStyle().
+				PaddingLeft(3). // Extra padding to align with selected items
+				PaddingRight(2)
+
+			titleStyle := d.styles.NormalTitle
+			descStyle := d.styles.NormalDesc
+
+			content.WriteString(titleStyle.Render(title))
+			if desc != "" {
+				content.WriteString("\n")
+				content.WriteString(descStyle.Render(desc))
+			}
+		}
+
+		_, _ = fmt.Fprint(w, itemStyle.Render(content.String()))
+	}
 }
