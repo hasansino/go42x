@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
@@ -81,7 +80,7 @@ func (p *Claude) Ask(ctx context.Context, prompt string) ([]string, error) {
 		}
 	}
 
-	return strings.Split(text, "\n"), nil
+	return []string{text}, nil
 }
 
 func validStopReason(reason anthropic.StopReason) bool {

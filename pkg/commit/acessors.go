@@ -10,12 +10,12 @@ type providerAccessor interface {
 	Ask(ctx context.Context, prompt string) ([]string, error)
 }
 
-type uiAccessor interface {
-	ShowInteractive(suggestions map[string]string) (string, error)
-}
-
 type moduleAccessor interface {
 	Name() string
 	TransformPrompt(ctx context.Context, prompt string) (string, bool, error)
 	TransformCommitMessage(ctx context.Context, message string) (string, bool, error)
+}
+
+type uiAccessor interface {
+	ShowInteractive(suggestions map[string]string) (string, error)
 }

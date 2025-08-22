@@ -12,21 +12,17 @@ import (
 )
 
 type Options struct {
-	Logger *slog.Logger
-	// providers
-	Providers    []string
-	CustomPrompt string
-	Timeout      time.Duration
-	First        bool
-	// operational
-	Auto   bool
-	DryRun bool
-	// git
-	Unstage         bool
-	ExcludePatterns []string
-	IncludePatterns []string
-	// extra
-	Modules []string
+	Logger          *slog.Logger
+	Providers       []string      // AI providers to use for commit message generation
+	CustomPrompt    string        // Custom prompt template for commit messages
+	Timeout         time.Duration // Timeout for API requests
+	First           bool          // Use the first received message and discard others
+	Auto            bool          // Auto-commit with the first suggestion, no interactive mode
+	DryRun          bool          // Show what would be committed without actually committing
+	ExcludePatterns []string      // File patterns to exclude from the commit
+	IncludePatterns []string      // File patterns to include in the commit
+	Modules         []string      // List of modules to enable
+	MultiLine       bool          // Use multi-line commit messages
 }
 
 type Service struct {
@@ -116,7 +112,7 @@ func (s *Service) Execute(ctx context.Context) error {
 		ctx,
 		diff, branch, stagedFiles,
 		s.options.Providers, s.options.CustomPrompt,
-		s.options.First,
+		s.options.First, s.options.MultiLine,
 	)
 	if err != nil {
 		s.options.Logger.ErrorContext(ctx, "Failed to generate commit messages", "error", err)

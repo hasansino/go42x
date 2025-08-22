@@ -19,6 +19,12 @@ import (
 //go:embed prompt.md
 var defaultPrompt string
 
+//go:embed prompt-format-single.md
+var promptFormatSingle string
+
+//go:embed prompt-format-multi.md
+var promptFormatMulti string
+
 type AIService struct {
 	logger    *slog.Logger
 	timeout   time.Duration
@@ -66,14 +72,20 @@ func (s *AIService) GenerateCommitMessages(
 	ctx context.Context,
 	diff, branch string, files []string,
 	providers []string, customPrompt string,
-	first bool,
+	first bool, multiLine bool,
 ) (map[string]string, error) {
+	// passed from --providers(-p) flag
 	activeProviders := s.FilterProviders(providers)
 	if len(activeProviders) == 0 {
 		return nil, fmt.Errorf("no ai providers available")
 	}
 
-	prompt := s.buildPrompt(diff, branch, files, customPrompt)
+	var prompt string
+	if len(customPrompt) > 0 {
+		prompt = s.buildCustomPrompt(customPrompt, diff, branch, files)
+	} else {
+		prompt = s.buildPrompt(diff, branch, files, multiLine)
+	}
 
 	type providerResponse struct {
 		Name    string
@@ -146,12 +158,21 @@ func (s *AIService) GenerateCommitMessages(
 	return results, nil
 }
 
-func (s *AIService) buildPrompt(diff, branch string, files []string, customPrompt string) string {
-	target := defaultPrompt
-	if customPrompt != "" {
-		target = customPrompt
+func (s *AIService) buildPrompt(diff, branch string, files []string, multiLine bool) string {
+	injectFormat := promptFormatSingle
+	if multiLine {
+		injectFormat = promptFormatMulti
 	}
-	result := strings.ReplaceAll(target, "{branch}", branch)
+	result := defaultPrompt
+	result = strings.ReplaceAll(result, "{format}", injectFormat)
+	result = strings.ReplaceAll(result, "{branch}", branch)
+	result = strings.ReplaceAll(result, "{files}", strings.Join(files, ", "))
+	result = strings.ReplaceAll(result, "{diff}", diff)
+	return result
+}
+
+func (s *AIService) buildCustomPrompt(prompt string, diff, branch string, files []string) string {
+	result := strings.ReplaceAll(prompt, "{branch}", branch)
 	result = strings.ReplaceAll(result, "{files}", strings.Join(files, ", "))
 	result = strings.ReplaceAll(result, "{diff}", diff)
 	return result

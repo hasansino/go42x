@@ -33,7 +33,7 @@ func RunInteractiveUI(model Model) (string, error) {
 
 	choice := uiModel.GetFinalChoice()
 	if choice == "" {
-		return "", fmt.Errorf("no selection made")
+		return "", nil
 	}
 
 	return choice, nil

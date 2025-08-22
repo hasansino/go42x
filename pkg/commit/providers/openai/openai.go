@@ -86,7 +86,7 @@ func (p *OpenAI) Ask(ctx context.Context, prompt string) ([]string, error) {
 	text = strings.Trim(text, "```")
 	text = strings.Trim(text, "\n")
 
-	return strings.Split(text, "\n"), nil
+	return []string{text}, nil
 }
 
 func validFinishReason(reason string) bool {

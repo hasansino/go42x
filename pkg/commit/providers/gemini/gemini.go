@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
 	"google.golang.org/genai"
 )
@@ -90,7 +89,7 @@ func (p *Gemini) Ask(ctx context.Context, prompt string) ([]string, error) {
 		}
 	}
 
-	return strings.Split(text, "\n"), nil
+	return []string{text}, nil
 }
 
 func validFinishReason(reason genai.FinishReason) bool {
