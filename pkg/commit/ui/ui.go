@@ -12,12 +12,15 @@ func NewInteractiveService() *InteractiveService {
 	return &InteractiveService{}
 }
 
-func (s *InteractiveService) RenderInteractiveUI(suggestions map[string]string) (string, error) {
-	model := newModel(suggestions)
+func (s *InteractiveService) RenderInteractiveUI(
+	suggestions map[string]string,
+	checkboxStates map[string]bool,
+) (*Model, error) {
+	model := newModel(suggestions, checkboxStates)
 	return s.runInteractiveUI(model)
 }
 
-func (s *InteractiveService) runInteractiveUI(model Model) (string, error) {
+func (s *InteractiveService) runInteractiveUI(model Model) (*Model, error) {
 	// Configure program with enhanced features
 	program := tea.NewProgram(
 		model,
@@ -28,23 +31,18 @@ func (s *InteractiveService) runInteractiveUI(model Model) (string, error) {
 	// Start the program
 	finalModel, err := program.Run()
 	if err != nil {
-		return "", fmt.Errorf("failed to run interactive UI: %w", err)
+		return nil, fmt.Errorf("failed to run interactive UI: %w", err)
 	}
 
 	// Extract the final result
 	uiModel, ok := finalModel.(Model)
 	if !ok {
-		return "", fmt.Errorf("invalid model type returned from UI")
+		return nil, fmt.Errorf("invalid model type returned from UI")
 	}
 
 	if !uiModel.IsDone() {
-		return "", fmt.Errorf("UI was cancelled by user")
+		return nil, fmt.Errorf("UI was cancelled by user")
 	}
 
-	choice := uiModel.GetFinalChoice()
-	if choice == "" {
-		return "", nil
-	}
-
-	return choice, nil
+	return &uiModel, nil
 }

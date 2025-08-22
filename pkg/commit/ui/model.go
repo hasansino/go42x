@@ -25,7 +25,7 @@ type Model struct {
 }
 
 // newModel creates a new UI model with fancy list
-func newModel(suggestions map[string]string) Model {
+func newModel(suggestions map[string]string, checkboxStates map[string]bool) Model {
 	items := buildListItems(suggestions)
 
 	// Create custom delegate for multi-line support
@@ -72,6 +72,12 @@ func newModel(suggestions map[string]string) Model {
 
 	// Initialize checkboxes with default values
 	checkboxes := checkboxDefaults
+	for k, v := range checkboxStates {
+		if _, exists := checkboxes[k]; !exists {
+			continue // Ignore unknown keys
+		}
+		checkboxes[k] = v
+	}
 
 	return Model{
 		list:        l,
