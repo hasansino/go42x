@@ -33,7 +33,7 @@ func NewGo42Command(ctx context.Context, f *cmdutil.Factory) *cobra.Command {
 			initLogging(f.Options().LogLevel)
 		},
 		SilenceUsage:  true,
-		SilenceErrors: true,
+		SilenceErrors: false,
 	}
 
 	cmd.SetContext(ctx)

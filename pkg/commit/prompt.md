@@ -5,7 +5,6 @@ Your task is to generate a concise commit message based on the provided git diff
 # Requirements
 
 - Use conventional commits specification
-- Message should be concise and descriptive - it should be possible to understand the change from the message alone
 - Use imperative mood (e.g., "Fix bug" instead of "Fixed bug")
 - Use present tense (e.g., "Add feature" instead of "Added feature")
 - Use lowercase letters

@@ -39,6 +39,7 @@ func newCommitCommand(f *cmdutil.Factory) *cobra.Command {
 	flags.StringSliceVarP(&options.Modules, "modules", "m", nil, "Modules to enable")
 	flags.BoolVar(&options.MultiLine, "multi-line", false, "Use multi-line commit messages")
 	flags.BoolVar(&options.Push, "push", false, "Push after committing")
+	flags.StringVar(&options.Tag, "tag", "", "Create and increment semver tag (major|minor|patch)")
 
 	return cmd
 }

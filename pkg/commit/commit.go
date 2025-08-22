@@ -24,6 +24,20 @@ type Options struct {
 	Modules         []string      // List of modules to enable
 	MultiLine       bool          // Use multi-line commit messages
 	Push            bool          // Push after commit
+	Tag             string        // Tag increment type: major, minor, or patch
+}
+
+func (o *Options) Validate() error {
+	if o == nil {
+		return fmt.Errorf("options cannot be nil")
+	}
+	if o.Timeout <= 0 {
+		return fmt.Errorf("timeout must be greater than zero")
+	}
+	if o.Tag != "" && o.Tag != "major" && o.Tag != "minor" && o.Tag != "patch" {
+		return fmt.Errorf("invalid tag increment type: %s (must be major, minor, or patch)", o.Tag)
+	}
+	return nil
 }
 
 type Service struct {
@@ -35,6 +49,10 @@ type Service struct {
 }
 
 func NewCommitService(options *Options, repoPath string) (*Service, error) {
+	if err := options.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid options: %w", err)
+	}
+
 	git, err := NewGitOperations(repoPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize git operations: %w", err)
@@ -178,14 +196,49 @@ func (s *Service) Execute(ctx context.Context) error {
 			"message", commitMessage,
 			"dry_run", s.options.DryRun,
 		)
-	}
 
-	if s.options.Push && !s.options.DryRun {
-		if err := s.gitOps.Push(); err != nil {
-			s.options.Logger.ErrorContext(ctx, "Failed to push to remote", "error", err)
-			return fmt.Errorf("failed to push: %w", err)
+		if s.options.Push {
+			if err := s.gitOps.Push(); err != nil {
+				s.options.Logger.ErrorContext(ctx, "Failed to push to remote", "error", err)
+				return fmt.Errorf("failed to push: %w", err)
+			}
+			s.options.Logger.InfoContext(ctx, "Successfully pushed to remote")
 		}
-		s.options.Logger.InfoContext(ctx, "Successfully pushed to remote")
+
+		if s.options.Tag != "" {
+			latestTag, err := s.gitOps.GetLatestTag()
+			if err != nil {
+				s.options.Logger.ErrorContext(ctx, "Failed to get latest tag", "error", err)
+				return fmt.Errorf("failed to get latest tag: %w", err)
+			}
+
+			if latestTag == "" {
+				s.options.Logger.WarnContext(ctx, "No existing tags found, will create first tag")
+			} else {
+				s.options.Logger.InfoContext(ctx, "Latest tag found", "tag", latestTag)
+			}
+
+			newTag, err := s.gitOps.IncrementVersion(latestTag, s.options.Tag)
+			if err != nil {
+				s.options.Logger.ErrorContext(ctx, "Failed to increment version", "error", err)
+				return fmt.Errorf("failed to increment version: %w", err)
+			}
+
+			if err := s.gitOps.CreateTag(newTag, commitMessage); err != nil {
+				s.options.Logger.ErrorContext(ctx, "Failed to create tag", "tag", newTag, "error", err)
+				return fmt.Errorf("failed to create tag %s: %w", newTag, err)
+			}
+
+			s.options.Logger.InfoContext(ctx, "Tag created", "tag", newTag)
+
+			if s.options.Push {
+				if err := s.gitOps.PushTag(newTag); err != nil {
+					s.options.Logger.ErrorContext(ctx, "Failed to push tag", "tag", newTag, "error", err)
+					return fmt.Errorf("failed to push tag %s: %w", newTag, err)
+				}
+				s.options.Logger.InfoContext(ctx, "Tag pushed to remote", "tag", newTag)
+			}
+		}
 	}
 
 	return nil

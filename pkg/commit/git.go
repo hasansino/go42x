@@ -6,6 +6,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -26,6 +29,13 @@ type GitConfig struct {
 	GPGSign    bool
 	SigningKey string
 	GPGProgram string
+}
+
+// SemVer represents a semantic version
+type SemVer struct {
+	Major int
+	Minor int
+	Patch int
 }
 
 // GPGSigner implements the go-git Signer interface using gpg command
@@ -285,27 +295,53 @@ func isSimpleGlobPattern(pattern string) bool {
 }
 
 func (g *GitOperations) GetStagedDiff() (string, error) {
-	worktree, err := g.repo.Worktree()
+	// Use git diff --cached to get the actual staged diff
+	cmd := exec.Command("git", "diff", "--cached")
+	output, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("failed to get worktree: %w", err)
+		return "", fmt.Errorf("failed to get staged diff: %w", err)
 	}
 
-	status, err := worktree.Status()
-	if err != nil {
-		return "", fmt.Errorf("failed to get status: %w", err)
-	}
+	diff := string(output)
 
-	var diff strings.Builder
-	for file := range status {
-		fileStatus := status.File(file)
-		if fileStatus.Staging == 0 {
-			continue
+	// If diff is empty, check if there are any staged files
+	if strings.TrimSpace(diff) == "" {
+		worktree, err := g.repo.Worktree()
+		if err != nil {
+			return "", fmt.Errorf("failed to get worktree: %w", err)
 		}
-		diff.WriteString(fmt.Sprintf("--- a/%s\n+++ b/%s\n", file, file))
-		diff.WriteString(fmt.Sprintf("@@ staged changes in %s @@\n", file))
+
+		status, err := worktree.Status()
+		if err != nil {
+			return "", fmt.Errorf("failed to get status: %w", err)
+		}
+
+		// Check if there are any staged files
+		hasStagedFiles := false
+		for _, fileStatus := range status {
+			if fileStatus.Staging != 0 {
+				hasStagedFiles = true
+				break
+			}
+		}
+
+		if !hasStagedFiles {
+			return "", nil
+		}
+
+		// If there are staged files but no diff, they might be new files
+		// Try with --cached --no-index or check for untracked files
+		cmd = exec.Command("git", "diff", "--cached", "--stat")
+		output, _ = cmd.Output()
+		if len(output) > 0 {
+			// There are staged changes, get them with more options
+			cmd = exec.Command("git", "diff", "--cached", "--no-ext-diff")
+			output, _ = cmd.Output()
+			diff = string(output)
+		}
 	}
 
-	return diff.String(), nil
+	return diff, nil
 }
 
 func (g *GitOperations) CreateCommit(message string) error {
@@ -548,6 +584,121 @@ func (g *GitOperations) Push() error {
 		return fmt.Errorf("failed to push to origin/%s: %w\nOutput: %s", branch, err, string(output))
 	}
 
+	return nil
+}
+
+// GetLatestTag retrieves the latest semver tag from the repository
+func (g *GitOperations) GetLatestTag() (string, error) {
+	// Get all tags from git
+	cmd := exec.Command("git", "tag", "-l", "v*")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to list tags: %w", err)
+	}
+
+	tags := strings.Split(strings.TrimSpace(string(output)), "\n")
+	if len(tags) == 0 || tags[0] == "" {
+		// No tags found, return default
+		return "", nil
+	}
+
+	// Filter valid semver tags and sort them
+	var validTags []string
+	semverRegex := regexp.MustCompile(`^v(\d+)\.(\d+)\.(\d+)$`)
+	for _, tag := range tags {
+		if semverRegex.MatchString(tag) {
+			validTags = append(validTags, tag)
+		}
+	}
+
+	if len(validTags) == 0 {
+		return "", nil
+	}
+
+	// Sort tags by semver
+	sort.Slice(validTags, func(i, j int) bool {
+		vi := parseSemVer(validTags[i])
+		vj := parseSemVer(validTags[j])
+
+		if vi.Major != vj.Major {
+			return vi.Major > vj.Major
+		}
+		if vi.Minor != vj.Minor {
+			return vi.Minor > vj.Minor
+		}
+		return vi.Patch > vj.Patch
+	})
+
+	return validTags[0], nil
+}
+
+// parseSemVer parses a version string like "v1.2.3" into a SemVer struct
+func parseSemVer(version string) SemVer {
+	// Remove 'v' prefix if present
+	version = strings.TrimPrefix(version, "v")
+
+	parts := strings.Split(version, ".")
+	if len(parts) != 3 {
+		return SemVer{0, 0, 0}
+	}
+
+	major, _ := strconv.Atoi(parts[0])
+	minor, _ := strconv.Atoi(parts[1])
+	patch, _ := strconv.Atoi(parts[2])
+
+	return SemVer{
+		Major: major,
+		Minor: minor,
+		Patch: patch,
+	}
+}
+
+// IncrementVersion increments the version based on the increment type
+func (g *GitOperations) IncrementVersion(currentTag string, incrementType string) (string, error) {
+	var version SemVer
+
+	if currentTag == "" {
+		// Start with v0.0.0 if no tags exist
+		version = SemVer{0, 0, 0}
+	} else {
+		version = parseSemVer(currentTag)
+	}
+
+	switch strings.ToLower(incrementType) {
+	case "major":
+		version.Major++
+		version.Minor = 0
+		version.Patch = 0
+	case "minor":
+		version.Minor++
+		version.Patch = 0
+	case "patch":
+		version.Patch++
+	default:
+		return "", fmt.Errorf("invalid increment type: %s (must be major, minor, or patch)", incrementType)
+	}
+
+	return fmt.Sprintf("v%d.%d.%d", version.Major, version.Minor, version.Patch), nil
+}
+
+// CreateTag creates a new annotated tag
+func (g *GitOperations) CreateTag(tagName string, message string) error {
+	// Create annotated tag
+	cmd := exec.Command("git", "tag", "-a", tagName, "-m", message)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to create tag %s: %w\nOutput: %s", tagName, err, string(output))
+	}
+	return nil
+}
+
+// PushTag pushes the tag to the remote repository
+func (g *GitOperations) PushTag(tagName string) error {
+	cmd := exec.Command("git", "push", "origin", tagName)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to push tag %s: %w\nOutput: %s", tagName, err, string(output))
+	}
 	return nil
 }
 
