@@ -193,8 +193,7 @@ func (s *Service) Execute(ctx context.Context) error {
 		}
 		s.options.Logger.InfoContext(
 			ctx, "Commit created",
-			"message", commitMessage,
-			"dry_run", s.options.DryRun,
+			"commit_message", commitMessage,
 		)
 
 		if s.options.Push {
@@ -239,6 +238,11 @@ func (s *Service) Execute(ctx context.Context) error {
 				s.options.Logger.InfoContext(ctx, "Tag pushed to remote", "tag", newTag)
 			}
 		}
+	} else {
+		s.options.Logger.WarnContext(
+			ctx, "Dry run enabled, no artifacts created",
+			"commit_message", commitMessage,
+		)
 	}
 
 	return nil

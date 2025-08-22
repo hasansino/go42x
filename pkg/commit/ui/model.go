@@ -212,16 +212,14 @@ func (m Model) View() string {
 		return ""
 	}
 
-	if m.manualMode {
-		return m.renderManualMode()
-	}
-
-	listView := m.list.View()
-
 	paddedStyle := lipgloss.NewStyle().
 		Padding(2, 4)
 
-	return paddedStyle.Render(listView)
+	if m.manualMode {
+		return paddedStyle.Render(m.renderManualMode())
+	}
+
+	return paddedStyle.Render(m.list.View())
 }
 
 // renderManualMode renders the manual input screen with fancy styling
