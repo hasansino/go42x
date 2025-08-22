@@ -137,6 +137,11 @@ func (s *Service) Execute(ctx context.Context) error {
 		}
 	}
 
+	if len(commitMessage) == 0 {
+		s.options.Logger.WarnContext(ctx, "No commit message provided")
+		return fmt.Errorf("no commit message provided")
+	}
+
 	for _, module := range s.modules {
 		s.options.Logger.DebugContext(ctx, "Running module", "name", module.Name())
 		commitMessage, workDone, err := module.TransformCommitMessage(ctx, commitMessage)

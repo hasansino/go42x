@@ -97,6 +97,4 @@ func initLogging(level string) {
 
 	// for both 'log' and 'slog'
 	slog.SetDefault(logger)
-
-	logger.Info("Logging initialized", slog.String("level", level))
 }
