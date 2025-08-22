@@ -40,6 +40,21 @@ func (m *MockproviderAccessor) EXPECT() *MockproviderAccessorMockRecorder {
 	return m.recorder
 }
 
+// Ask mocks base method.
+func (m *MockproviderAccessor) Ask(ctx context.Context, prompt string) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Ask", ctx, prompt)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Ask indicates an expected call of Ask.
+func (mr *MockproviderAccessorMockRecorder) Ask(ctx, prompt any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ask", reflect.TypeOf((*MockproviderAccessor)(nil).Ask), ctx, prompt)
+}
+
 // IsAvailable mocks base method.
 func (m *MockproviderAccessor) IsAvailable() bool {
 	m.ctrl.T.Helper()
@@ -68,19 +83,74 @@ func (mr *MockproviderAccessorMockRecorder) Name() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockproviderAccessor)(nil).Name))
 }
 
-// RequestMessage mocks base method.
-func (m *MockproviderAccessor) RequestMessage(ctx context.Context, prompt string) ([]string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RequestMessage", ctx, prompt)
-	ret0, _ := ret[0].([]string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+// MockmoduleAccessor is a mock of moduleAccessor interface.
+type MockmoduleAccessor struct {
+	ctrl     *gomock.Controller
+	recorder *MockmoduleAccessorMockRecorder
+	isgomock struct{}
 }
 
-// RequestMessage indicates an expected call of RequestMessage.
-func (mr *MockproviderAccessorMockRecorder) RequestMessage(ctx, prompt any) *gomock.Call {
+// MockmoduleAccessorMockRecorder is the mock recorder for MockmoduleAccessor.
+type MockmoduleAccessorMockRecorder struct {
+	mock *MockmoduleAccessor
+}
+
+// NewMockmoduleAccessor creates a new mock instance.
+func NewMockmoduleAccessor(ctrl *gomock.Controller) *MockmoduleAccessor {
+	mock := &MockmoduleAccessor{ctrl: ctrl}
+	mock.recorder = &MockmoduleAccessorMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockmoduleAccessor) EXPECT() *MockmoduleAccessorMockRecorder {
+	return m.recorder
+}
+
+// Name mocks base method.
+func (m *MockmoduleAccessor) Name() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Name")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// Name indicates an expected call of Name.
+func (mr *MockmoduleAccessorMockRecorder) Name() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RequestMessage", reflect.TypeOf((*MockproviderAccessor)(nil).RequestMessage), ctx, prompt)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockmoduleAccessor)(nil).Name))
+}
+
+// TransformCommitMessage mocks base method.
+func (m *MockmoduleAccessor) TransformCommitMessage(ctx context.Context, message string) (string, bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TransformCommitMessage", ctx, message)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(bool)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// TransformCommitMessage indicates an expected call of TransformCommitMessage.
+func (mr *MockmoduleAccessorMockRecorder) TransformCommitMessage(ctx, message any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TransformCommitMessage", reflect.TypeOf((*MockmoduleAccessor)(nil).TransformCommitMessage), ctx, message)
+}
+
+// TransformPrompt mocks base method.
+func (m *MockmoduleAccessor) TransformPrompt(ctx context.Context, prompt string) (string, bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TransformPrompt", ctx, prompt)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(bool)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// TransformPrompt indicates an expected call of TransformPrompt.
+func (mr *MockmoduleAccessorMockRecorder) TransformPrompt(ctx, prompt any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TransformPrompt", reflect.TypeOf((*MockmoduleAccessor)(nil).TransformPrompt), ctx, prompt)
 }
 
 // MockuiAccessor is a mock of uiAccessor interface.

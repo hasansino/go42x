@@ -19,14 +19,14 @@ func newCommitCommand(f *cmdutil.Factory) *cobra.Command {
 		Short: "Git commit automation",
 		Long:  `Git commit automation`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runCommit(f, options)
+			return runCommitCommand(f, options)
 		},
 	}
 
 	flags := cmd.Flags()
 
-	flags.StringSliceVarP(
-		&options.Providers, "providers", "p", []string{},
+	flags.StringSliceVar(
+		&options.Providers, "providers", []string{},
 		"Providers to use, leave empty to use all available.",
 	)
 	flags.DurationVar(&options.Timeout, "timeout", 5*time.Second, "API timeout")
@@ -38,13 +38,13 @@ func newCommitCommand(f *cmdutil.Factory) *cobra.Command {
 	flags.StringSliceVar(&options.IncludePatterns, "include-only", nil, "Only include specific patterns")
 	flags.StringSliceVarP(&options.Modules, "modules", "m", nil, "Modules to enable")
 	flags.BoolVar(&options.MultiLine, "multi-line", false, "Use multi-line commit messages")
-	flags.BoolVar(&options.Push, "push", false, "Push after committing")
-	flags.StringVar(&options.Tag, "tag", "", "Create and increment semver tag (major|minor|patch)")
+	flags.BoolVarP(&options.Push, "push", "p", false, "Push after committing")
+	flags.StringVarP(&options.Tag, "tag", "t", "", "Create and increment semver tag (major|minor|patch)")
 
 	return cmd
 }
 
-func runCommit(f *cmdutil.Factory, options *commit.Options) error {
+func runCommitCommand(f *cmdutil.Factory, options *commit.Options) error {
 	options.Logger = slog.Default()
 	service, err := commit.NewCommitService(options, ".")
 	if err != nil {

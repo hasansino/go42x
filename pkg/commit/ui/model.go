@@ -52,7 +52,6 @@ func buildChoicesFromSuggestions(suggestions map[string]string) []Choice {
 		for len(lines) > 0 && strings.TrimSpace(lines[len(lines)-1]) == "" {
 			lines = lines[:len(lines)-1]
 		}
-
 		choices = append(choices, Choice{
 			Provider: providerName,
 			Message:  message,
@@ -77,7 +76,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		return m, nil
-
 	case tea.KeyMsg:
 		if m.manualMode {
 			return m.updateManualMode(msg)
