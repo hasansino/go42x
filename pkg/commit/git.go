@@ -534,6 +534,23 @@ func shouldExcludeFile(file string, patterns []string) bool {
 	return false
 }
 
+func (g *GitOperations) Push() error {
+	// Get the current branch name
+	branch, err := g.GetCurrentBranch()
+	if err != nil {
+		return fmt.Errorf("failed to get current branch: %w", err)
+	}
+
+	// Push to the matching branch on the remote
+	cmd := exec.Command("git", "push", "origin", branch)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to push to origin/%s: %w\nOutput: %s", branch, err, string(output))
+	}
+
+	return nil
+}
+
 func shouldIncludeFile(file string, patterns []string) bool {
 	if len(patterns) == 0 {
 		return false

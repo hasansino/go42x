@@ -32,6 +32,8 @@ func NewGo42Command(ctx context.Context, f *cmdutil.Factory) *cobra.Command {
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			initLogging(f.Options().LogLevel)
 		},
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
 
 	cmd.SetContext(ctx)

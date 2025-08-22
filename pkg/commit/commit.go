@@ -23,6 +23,7 @@ type Options struct {
 	IncludePatterns []string      // File patterns to include in the commit
 	Modules         []string      // List of modules to enable
 	MultiLine       bool          // Use multi-line commit messages
+	Push            bool          // Push after commit
 }
 
 type Service struct {
@@ -172,13 +173,20 @@ func (s *Service) Execute(ctx context.Context) error {
 			s.options.Logger.ErrorContext(ctx, "Failed to create commit", "error", err)
 			return fmt.Errorf("failed to create commit: %w", err)
 		}
+		s.options.Logger.InfoContext(
+			ctx, "Commit created",
+			"message", commitMessage,
+			"dry_run", s.options.DryRun,
+		)
 	}
 
-	s.options.Logger.InfoContext(
-		ctx, "Commit created",
-		"message", commitMessage,
-		"dry_run", s.options.DryRun,
-	)
+	if s.options.Push && !s.options.DryRun {
+		if err := s.gitOps.Push(); err != nil {
+			s.options.Logger.ErrorContext(ctx, "Failed to push to remote", "error", err)
+			return fmt.Errorf("failed to push: %w", err)
+		}
+		s.options.Logger.InfoContext(ctx, "Successfully pushed to remote")
+	}
 
 	return nil
 }

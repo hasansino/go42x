@@ -38,6 +38,7 @@ func newCommitCommand(f *cmdutil.Factory) *cobra.Command {
 	flags.StringSliceVar(&options.IncludePatterns, "include-only", nil, "Only include specific patterns")
 	flags.StringSliceVarP(&options.Modules, "modules", "m", nil, "Modules to enable")
 	flags.BoolVar(&options.MultiLine, "multi-line", false, "Use multi-line commit messages")
+	flags.BoolVar(&options.Push, "push", false, "Push after committing")
 
 	return cmd
 }
