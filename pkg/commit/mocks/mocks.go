@@ -177,17 +177,17 @@ func (m *MockuiAccessor) EXPECT() *MockuiAccessorMockRecorder {
 	return m.recorder
 }
 
-// ShowInteractive mocks base method.
-func (m *MockuiAccessor) ShowInteractive(suggestions map[string]string) (string, error) {
+// RenderInteractiveUI mocks base method.
+func (m *MockuiAccessor) RenderInteractiveUI(suggestions map[string]string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ShowInteractive", suggestions)
+	ret := m.ctrl.Call(m, "RenderInteractiveUI", suggestions)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ShowInteractive indicates an expected call of ShowInteractive.
-func (mr *MockuiAccessorMockRecorder) ShowInteractive(suggestions any) *gomock.Call {
+// RenderInteractiveUI indicates an expected call of RenderInteractiveUI.
+func (mr *MockuiAccessorMockRecorder) RenderInteractiveUI(suggestions any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShowInteractive", reflect.TypeOf((*MockuiAccessor)(nil).ShowInteractive), suggestions)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RenderInteractiveUI", reflect.TypeOf((*MockuiAccessor)(nil).RenderInteractiveUI), suggestions)
 }

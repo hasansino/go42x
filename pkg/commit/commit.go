@@ -149,7 +149,7 @@ func (s *Service) Execute(ctx context.Context) error {
 		s.options.Logger.DebugContext(ctx, "Auto-selected commit message", "message", commitMessage)
 	} else {
 		s.options.Logger.DebugContext(ctx, "Using interactive mode...")
-		commitMessage, err = s.uiService.ShowInteractive(messages)
+		commitMessage, err = s.uiService.RenderInteractiveUI(messages)
 		if err != nil {
 			s.options.Logger.ErrorContext(ctx, "Failed to enter interactive mode", "error", err)
 			return fmt.Errorf("failed to run interactive ui: %w", err)

@@ -17,5 +17,5 @@ type moduleAccessor interface {
 }
 
 type uiAccessor interface {
-	ShowInteractive(suggestions map[string]string) (string, error)
+	RenderInteractiveUI(suggestions map[string]string) (string, error)
 }

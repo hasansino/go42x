@@ -6,8 +6,18 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// RunInteractiveUI starts the interactive terminal UI and returns the selected commit message
-func RunInteractiveUI(model Model) (string, error) {
+type InteractiveService struct{}
+
+func NewInteractiveService() *InteractiveService {
+	return &InteractiveService{}
+}
+
+func (s *InteractiveService) RenderInteractiveUI(suggestions map[string]string) (string, error) {
+	model := newModel(suggestions)
+	return s.runInteractiveUI(model)
+}
+
+func (s *InteractiveService) runInteractiveUI(model Model) (string, error) {
 	// Configure program with enhanced features
 	program := tea.NewProgram(
 		model,
