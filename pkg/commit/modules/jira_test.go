@@ -74,7 +74,8 @@ func TestDetectJIRAPrefix(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := DetectJIRAPrefix(tt.branchName)
+			module := NewJIRAPrefixDetector()
+			result := module.detectJIRAPrefix(tt.branchName)
 			if result != tt.expected {
 				t.Errorf("DetectJIRAPrefix(%q) = %q, want %q", tt.branchName, result, tt.expected)
 			}
@@ -123,7 +124,8 @@ func TestApplyJIRAPrefix(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := ApplyJIRAPrefix(tt.commitMessage, tt.jiraPrefix)
+			module := NewJIRAPrefixDetector()
+			result := module.applyJIRAPrefix(tt.commitMessage, tt.jiraPrefix)
 			if result != tt.expected {
 				t.Errorf("ApplyJIRAPrefix(%q, %q) = %q, want %q", tt.commitMessage, tt.jiraPrefix, result, tt.expected)
 			}
