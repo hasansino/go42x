@@ -1,6 +1,7 @@
-package commit
+package modules
 
 import (
+	"context"
 	"regexp"
 	"strings"
 )
@@ -14,7 +15,29 @@ var jiraPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`/([A-Z]+-\d+)(?:-|$)`),
 }
 
-func DetectJIRAPrefix(branchName string) string {
+type JIRAPrefixDetector struct{}
+
+func NewJIRAPrefixDetector() *JIRAPrefixDetector {
+	return &JIRAPrefixDetector{}
+}
+
+func (j *JIRAPrefixDetector) Name() string {
+	return "jiraPrefixDetector"
+}
+
+func (j *JIRAPrefixDetector) TransformPrompt(_ context.Context, prompt string) (string, bool, error) {
+	return prompt, false, nil
+}
+func (j *JIRAPrefixDetector) TransformCommitMessage(ctx context.Context, message string) (string, bool, error) {
+	jiraPrefix := j.detectJIRAPrefix(message)
+	if jiraPrefix == "" {
+		return message, false, nil
+	}
+	commitMessage := j.applyJIRAPrefix(message, jiraPrefix)
+	return commitMessage, true, nil
+}
+
+func (j *JIRAPrefixDetector) detectJIRAPrefix(branchName string) string {
 	if branchName == "" || branchName == "main" || branchName == "master" || branchName == "develop" {
 		return ""
 	}
@@ -27,7 +50,7 @@ func DetectJIRAPrefix(branchName string) string {
 	return ""
 }
 
-func ApplyJIRAPrefix(commitMessage, jiraPrefix string) string {
+func (j *JIRAPrefixDetector) applyJIRAPrefix(commitMessage, jiraPrefix string) string {
 	if jiraPrefix == "" {
 		return commitMessage
 	}

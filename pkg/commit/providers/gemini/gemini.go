@@ -3,7 +3,6 @@ package gemini
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"strings"
 
@@ -36,9 +35,9 @@ func (p *Gemini) IsAvailable() bool {
 	return p.apiKey != ""
 }
 
-func (p *Gemini) RequestMessage(ctx context.Context, prompt string) ([]string, error) {
+func (p *Gemini) Ask(ctx context.Context, prompt string) ([]string, error) {
 	if !p.IsAvailable() {
-		return nil, fmt.Errorf("google api key not found")
+		return nil, fmt.Errorf("api key not found")
 	}
 
 	if p.client == nil {
@@ -60,25 +59,28 @@ func (p *Gemini) RequestMessage(ctx context.Context, prompt string) ([]string, e
 		model = p.model
 	}
 
-	resp, err := p.client.Models.GenerateContent(ctx, model, contents, &genai.GenerateContentConfig{
-		MaxOutputTokens: defaultMaxTokens,
-	})
+	resp, err := p.client.Models.GenerateContent(
+		ctx, model, contents,
+		&genai.GenerateContentConfig{
+			MaxOutputTokens: defaultMaxTokens,
+			CandidateCount:  1,
+		})
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate content: %w", err)
 	}
 
-	slog.Default().Debug("Received message from provider",
-		"provider", p.Name(),
-	)
-
 	if len(resp.Candidates) == 0 {
-		return nil, fmt.Errorf("no candidates received from gemini")
+		return nil, fmt.Errorf("no candidates received")
 	}
 
 	candidate := resp.Candidates[0]
 
+	if len(candidate.FinishReason) > 0 && !validFinishReason(candidate.FinishReason) {
+		return nil, fmt.Errorf("stopped with reason: %s", candidate.FinishReason)
+	}
+
 	if candidate.Content == nil {
-		return nil, fmt.Errorf("no content in gemini candidate, finish_reason: %v", candidate.FinishReason)
+		return nil, fmt.Errorf("no content received")
 	}
 
 	var text string
@@ -88,39 +90,14 @@ func (p *Gemini) RequestMessage(ctx context.Context, prompt string) ([]string, e
 		}
 	}
 
-	if text == "" {
-		if candidate.FinishReason == "MAX_TOKENS" {
-			return nil, fmt.Errorf(
-				"gemini response truncated due to token limit (finish_reason: MAX_TOKENS) - try reducing prompt size",
-			)
-		}
-		return nil, fmt.Errorf("no text content received from gemini (finish_reason: %v)", candidate.FinishReason)
+	return strings.Split(text, "\n"), nil
+}
+
+func validFinishReason(reason genai.FinishReason) bool {
+	switch reason {
+	case genai.FinishReasonStop:
+		return true
+	default:
+		return false
 	}
-
-	// Handle code block formatted responses
-	text = strings.TrimSpace(text)
-	if strings.HasPrefix(text, "```") && strings.HasSuffix(text, "```") {
-		lines := strings.Split(text, "\n")
-		if len(lines) > 2 {
-			// Remove first and last line (code block markers)
-			text = strings.Join(lines[1:len(lines)-1], "\n")
-		}
-	}
-
-	lines := strings.Split(text, "\n")
-
-	var suggestions []string
-	if len(lines) > 0 {
-		// Join back into a single multi-line message
-		fullMessage := strings.TrimSpace(strings.Join(lines, "\n"))
-		if fullMessage != "" {
-			suggestions = append(suggestions, fullMessage)
-		}
-	}
-
-	if len(suggestions) == 0 {
-		suggestions = []string{strings.TrimSpace(text)}
-	}
-
-	return suggestions, nil
 }

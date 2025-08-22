@@ -3,7 +3,6 @@ package claude
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"strings"
 
@@ -37,9 +36,9 @@ func (p *Claude) IsAvailable() bool {
 	return p.apiKey != ""
 }
 
-func (p *Claude) RequestMessage(ctx context.Context, prompt string) ([]string, error) {
+func (p *Claude) Ask(ctx context.Context, prompt string) ([]string, error) {
 	if !p.IsAvailable() {
-		return nil, fmt.Errorf("claude api key not found")
+		return nil, fmt.Errorf("api key not found")
 	}
 
 	if p.client == nil {
@@ -65,9 +64,14 @@ func (p *Claude) RequestMessage(ctx context.Context, prompt string) ([]string, e
 		return nil, fmt.Errorf("failed to create message: %w", err)
 	}
 
-	slog.Default().Debug("Received message from provider",
-		"provider", p.Name(),
-	)
+	// "end_turn", "max_tokens", "stop_sequence", "tool_use", "pause_turn", "refusal"
+	if len(message.StopReason) != 0 && !validStopReason(message.StopReason) {
+		return nil, fmt.Errorf("stopped with reason: %s", message.StopReason)
+	}
+
+	if len(message.Content) == 0 {
+		return nil, fmt.Errorf("no text content received")
+	}
 
 	var text string
 	for _, content := range message.Content {
@@ -77,34 +81,14 @@ func (p *Claude) RequestMessage(ctx context.Context, prompt string) ([]string, e
 		}
 	}
 
-	if text == "" {
-		return nil, fmt.Errorf("no text content received from Claude")
+	return strings.Split(text, "\n"), nil
+}
+
+func validStopReason(reason anthropic.StopReason) bool {
+	switch reason {
+	case anthropic.StopReasonEndTurn:
+		return true
+	default:
+		return false
 	}
-
-	// Handle code block formatted responses
-	text = strings.TrimSpace(text)
-	if strings.HasPrefix(text, "```") && strings.HasSuffix(text, "```") {
-		lines := strings.Split(text, "\n")
-		if len(lines) > 2 {
-			// Remove first and last line (code block markers)
-			text = strings.Join(lines[1:len(lines)-1], "\n")
-		}
-	}
-
-	lines := strings.Split(text, "\n")
-
-	var suggestions []string
-	if len(lines) > 0 {
-		// Join back into a single multi-line message
-		fullMessage := strings.TrimSpace(strings.Join(lines, "\n"))
-		if fullMessage != "" {
-			suggestions = append(suggestions, fullMessage)
-		}
-	}
-
-	if len(suggestions) == 0 {
-		suggestions = []string{strings.TrimSpace(text)}
-	}
-
-	return suggestions, nil
 }

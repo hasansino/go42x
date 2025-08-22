@@ -3,7 +3,6 @@ package openai
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"strings"
 
@@ -38,7 +37,7 @@ func (p *OpenAI) IsAvailable() bool {
 	return p.apiKey != ""
 }
 
-func (p *OpenAI) RequestMessage(ctx context.Context, prompt string) ([]string, error) {
+func (p *OpenAI) Ask(ctx context.Context, prompt string) ([]string, error) {
 	if !p.IsAvailable() {
 		return nil, fmt.Errorf("openai api key not found")
 	}
@@ -55,53 +54,46 @@ func (p *OpenAI) RequestMessage(ctx context.Context, prompt string) ([]string, e
 		model = p.model
 	}
 
-	chatCompletion, err := p.client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
-		Messages: []openai.ChatCompletionMessageParamUnion{
-			openai.UserMessage(prompt),
-		},
-		Model:               model,
-		N:                   openai.Int(1),
-		MaxCompletionTokens: openai.Int(defaultMaxTokens),
-	})
+	chatCompletion, err := p.client.Chat.Completions.New(
+		ctx, openai.ChatCompletionNewParams{
+			Messages: []openai.ChatCompletionMessageParamUnion{
+				openai.UserMessage(prompt),
+			},
+			Model:               model,
+			MaxCompletionTokens: openai.Int(defaultMaxTokens),
+			N:                   openai.Int(1), // number of candidates
+		})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create completion: %w", err)
 	}
 
-	slog.Default().Debug("Received message from provider",
-		"provider", p.Name(),
-	)
-
-	var suggestions []string
-	for _, choice := range chatCompletion.Choices {
-		content := choice.Message.Content
-		if content == "" {
-			continue
-		}
-
-		// Handle code block formatted responses
-		content = strings.TrimSpace(content)
-		if strings.HasPrefix(content, "```") && strings.HasSuffix(content, "```") {
-			lines := strings.Split(content, "\n")
-			if len(lines) > 2 {
-				// Remove first and last line (code block markers)
-				content = strings.Join(lines[1:len(lines)-1], "\n")
-			}
-		}
-
-		lines := strings.Split(content, "\n")
-
-		if len(lines) > 0 {
-			// Join back into a single multi-line message
-			fullMessage := strings.TrimSpace(strings.Join(lines, "\n"))
-			if fullMessage != "" {
-				suggestions = append(suggestions, fullMessage)
-			}
-		}
+	if len(chatCompletion.Choices) == 0 {
+		return nil, fmt.Errorf("no candidates received")
 	}
 
-	if len(suggestions) == 0 && len(chatCompletion.Choices) > 0 {
-		suggestions = []string{strings.TrimSpace(chatCompletion.Choices[0].Message.Content)}
+	candidate := chatCompletion.Choices[0]
+
+	// "stop", "length", "tool_calls", "content_filter", "function_call"
+	if len(candidate.FinishReason) > 0 && !validFinishReason(candidate.FinishReason) {
+		return nil, fmt.Errorf("stopped with reason: %s", candidate.FinishReason)
 	}
 
-	return suggestions, nil
+	if len(candidate.Message.Content) == 0 {
+		return nil, fmt.Errorf("no content received")
+	}
+
+	text := strings.TrimSpace(candidate.Message.Content)
+	text = strings.Trim(text, "```")
+	text = strings.Trim(text, "\n")
+
+	return strings.Split(text, "\n"), nil
+}
+
+func validFinishReason(reason string) bool {
+	switch reason {
+	case "stop":
+		return true
+	default:
+		return false
+	}
 }

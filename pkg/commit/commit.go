@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hasansino/go42x/pkg/commit/modules"
 	"github.com/hasansino/go42x/pkg/commit/ui"
 )
 
@@ -24,8 +25,8 @@ type Options struct {
 	Unstage         bool
 	ExcludePatterns []string
 	IncludePatterns []string
-	// standalone features
-	JiraPrefixDetection bool
+	// extra
+	Modules []string
 }
 
 type Service struct {
@@ -33,6 +34,7 @@ type Service struct {
 	gitOps    *GitOperations
 	aiService *AIService
 	uiService uiAccessor
+	modules   []moduleAccessor
 }
 
 func NewCommitService(options *Options, repoPath string) (*Service, error) {
@@ -40,15 +42,27 @@ func NewCommitService(options *Options, repoPath string) (*Service, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize git operations: %w", err)
 	}
+
 	if options.Logger == nil {
 		options.Logger = slog.New(slog.DiscardHandler)
 	}
-	return &Service{
+
+	svc := &Service{
 		options:   options,
 		gitOps:    git,
 		aiService: NewAIService(options.Logger, options.Timeout),
 		uiService: ui.NewInteractiveService(),
-	}, nil
+		modules:   make([]moduleAccessor, 0),
+	}
+
+	for _, name := range options.Modules {
+		switch name {
+		case "jiraPrefixDetector":
+			svc.modules = append(svc.modules, modules.NewJIRAPrefixDetector())
+		}
+	}
+
+	return svc, nil
 }
 
 func (s *Service) Execute(ctx context.Context) error {
@@ -127,12 +141,28 @@ func (s *Service) Execute(ctx context.Context) error {
 		}
 	}
 
-	if s.options.JiraPrefixDetection {
-		jiraPrefix := DetectJIRAPrefix(branch)
-		commitMessage = ApplyJIRAPrefix(commitMessage, jiraPrefix)
-		s.options.Logger.InfoContext(
-			ctx, "Detected JIRA prefix, commit message updated",
-			"prefix", jiraPrefix,
+	for _, module := range s.modules {
+		s.options.Logger.DebugContext(ctx, "Running module", "name", module.Name())
+		commitMessage, workDone, err := module.TransformCommitMessage(ctx, commitMessage)
+		if !workDone {
+			s.options.Logger.DebugContext(
+				ctx, "Module did not transform commit message",
+				"module", module.Name(),
+			)
+			continue
+		}
+		if err != nil {
+			s.options.Logger.ErrorContext(
+				ctx, "Failed to transform commit message",
+				"module", module.Name(),
+				"error", err,
+			)
+			continue
+		}
+		s.options.Logger.DebugContext(
+			ctx, "Transformed commit message",
+			"module", module.Name(),
+			"message", commitMessage,
 		)
 	}
 

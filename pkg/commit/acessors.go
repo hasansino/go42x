@@ -7,9 +7,15 @@ import "context"
 type providerAccessor interface {
 	Name() string
 	IsAvailable() bool
-	RequestMessage(ctx context.Context, prompt string) ([]string, error)
+	Ask(ctx context.Context, prompt string) ([]string, error)
 }
 
 type uiAccessor interface {
 	ShowInteractive(suggestions map[string]string) (string, error)
+}
+
+type moduleAccessor interface {
+	Name() string
+	TransformPrompt(ctx context.Context, prompt string) (string, bool, error)
+	TransformCommitMessage(ctx context.Context, message string) (string, bool, error)
 }

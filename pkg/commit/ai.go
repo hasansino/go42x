@@ -98,7 +98,7 @@ func (s *AIService) GenerateCommitMessages(
 			ctx, cancel := context.WithTimeout(ctx, s.timeout)
 			defer cancel()
 
-			messages, err := provider.RequestMessage(ctx, prompt)
+			messages, err := provider.Ask(ctx, prompt)
 			if err != nil {
 				if !errors.Is(err, context.Canceled) {
 					s.logger.ErrorContext(
