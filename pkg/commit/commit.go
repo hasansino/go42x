@@ -44,7 +44,7 @@ type Service struct {
 	options   *Options
 	gitOps    *GitOperations
 	aiService *AIService
-	uiService uiAccessor
+	uiService *ui.InteractiveService
 	modules   []moduleAccessor
 }
 

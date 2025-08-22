@@ -28,23 +28,23 @@ func newCommitDelegate() commitDelegate {
 
 	// Customize styles
 	d.styles.SelectedTitle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("170")).
+		Foreground(lipgloss.Color(ColorPrimary)).
 		Bold(true)
 
 	d.styles.SelectedDesc = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("245"))
+		Foreground(lipgloss.Color(ColorSecondary))
 
 	d.styles.NormalTitle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("250"))
+		Foreground(lipgloss.Color(ColorNormal))
 
 	d.styles.NormalDesc = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("240"))
+		Foreground(lipgloss.Color(ColorDimmed))
 
 	d.styles.DimmedTitle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("238"))
+		Foreground(lipgloss.Color(ColorDimmedDark))
 
 	d.styles.DimmedDesc = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("236"))
+		Foreground(lipgloss.Color(ColorDimmedDarker))
 
 	return d
 }
@@ -76,14 +76,14 @@ func (d commitDelegate) Render(w io.Writer, m list.Model, index int, item list.I
 
 	// Build description
 	var desc string
-	if commit.provider == "manual" {
+	if commit.provider == ProviderManual {
 		desc = commit.Description()
 	} else if isSelected && len(commit.lines) > 1 {
 		// Show full multi-line message when selected
 		var descLines []string
 		for i, line := range commit.lines {
 			descLines = append(descLines, line)
-			if i >= 10 { // Limit to 5 lines in the list
+			if i >= MaxDisplayLines { // Limit display lines
 				descLines = append(descLines, "...")
 				break
 			}
@@ -94,8 +94,8 @@ func (d commitDelegate) Render(w io.Writer, m list.Model, index int, item list.I
 		firstLine := ""
 		if len(commit.lines) > 0 {
 			firstLine = commit.lines[0]
-			if len(firstLine) > 60 {
-				firstLine = firstLine[:57] + "..."
+			if len(firstLine) > MaxDescriptionLen {
+				firstLine = firstLine[:MaxDescriptionLen-3] + "..."
 			}
 		}
 		desc = firstLine
@@ -110,17 +110,17 @@ func (d commitDelegate) Render(w io.Writer, m list.Model, index int, item list.I
 		selectedStyle := lipgloss.NewStyle().
 			BorderLeft(true).
 			BorderStyle(lipgloss.ThickBorder()).
-			BorderForeground(lipgloss.Color("170")). // Purple accent on left
+			BorderForeground(lipgloss.Color(ColorPrimary)). // Purple accent on left
 			PaddingLeft(1).
 			PaddingRight(2).
 			Width(m.Width() - 8) // Account for list padding
 
 		titleStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("170")).
+			Foreground(lipgloss.Color(ColorPrimary)).
 			Bold(true)
 
 		descStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("245"))
+			Foreground(lipgloss.Color(ColorSecondary))
 
 		content.WriteString(titleStyle.Render(title))
 		if desc != "" {

@@ -13,16 +13,16 @@ type CommitItem struct {
 
 // Title returns the title of the item (provider name)
 func (i CommitItem) Title() string {
-	if i.provider == "manual" {
-		return "Write custom message"
+	if i.provider == ProviderManual {
+		return ManualOptionTitle
 	}
 	return strings.ToTitle(i.provider)
 }
 
 // Description returns the description (shows all lines for multi-line messages)
 func (i CommitItem) Description() string {
-	if i.provider == "manual" {
-		return "Enter your own commit message"
+	if i.provider == ProviderManual {
+		return ManualOptionDesc
 	}
 	// For multi-line messages, join with line breaks
 	if len(i.lines) > 1 {

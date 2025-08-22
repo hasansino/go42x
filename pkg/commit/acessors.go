@@ -15,7 +15,3 @@ type moduleAccessor interface {
 	TransformPrompt(ctx context.Context, prompt string) (string, bool, error)
 	TransformCommitMessage(ctx context.Context, message string) (string, bool, error)
 }
-
-type uiAccessor interface {
-	RenderInteractiveUI(suggestions map[string]string) (string, error)
-}
