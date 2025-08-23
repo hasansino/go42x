@@ -408,10 +408,17 @@ func (m Model) renderFooter() string {
 
 // renderManualMode renders the manual input screen with fancy styling
 func (m Model) renderManualMode() string {
+	// Use same title style as main list for consistency
 	titleStyle := lipgloss.NewStyle().
+		Background(lipgloss.Color(ColorAccent)).
+		Foreground(lipgloss.Color(ColorBright)).
 		Bold(true).
-		Foreground(lipgloss.Color(ColorPrimary)).
-		MarginBottom(1)
+		Italic(true).
+		Padding(0, 2).
+		MarginBottom(1).
+		BorderStyle(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(ColorAccent)).
+		BorderBottom(true)
 
 	// Calculate input width accounting for:
 	// - Horizontal padding (PaddingHorizontal * 2)
@@ -439,18 +446,19 @@ func (m Model) renderManualMode() string {
 	b.WriteString(titleStyle.Render(ManualInputTitle))
 	b.WriteString("\n\n")
 
-	// Show the input with cursor
+	// Show the input with cursor at the correct position
 	input := m.manualInput
 	if input == "" {
-		input = " "
+		// Empty input - just show cursor
+		input = Cursor
+	} else {
+		// Add cursor at the end of input
+		lines := strings.Split(input, "\n")
+		if len(lines) > 0 {
+			lines[len(lines)-1] += Cursor
+		}
+		input = strings.Join(lines, "\n")
 	}
-
-	// Add cursor
-	lines := strings.Split(input, "\n")
-	if len(lines) > 0 {
-		lines[len(lines)-1] += Cursor
-	}
-	input = strings.Join(lines, "\n")
 
 	b.WriteString(inputStyle.Render(input))
 	b.WriteString("\n")
