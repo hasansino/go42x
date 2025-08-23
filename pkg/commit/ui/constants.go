@@ -94,6 +94,7 @@ const (
 	ColorAccent       = "62"
 	ColorBright       = "230"
 	ColorMuted        = "241"
+	ColorWarning      = "214"
 )
 
 // Layout Constants
@@ -108,7 +109,7 @@ const (
 	MaxDisplayLines    = 10 // Max lines to show in multi-line preview
 	MaxDescriptionLen  = 60 // Max length for single-line description
 	ManualInputWidth   = 80
-	ManualInputHeight  = 10
+	ManualInputHeight  = 1
 )
 
 // Keybindings
@@ -122,3 +123,5 @@ const (
 	KeySpace       = " "
 	KeyInterrupt   = "ctrl+c"
 )
+
+const minCommitMessageLength = 3

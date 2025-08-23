@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -426,17 +427,19 @@ func (m Model) renderManualMode() string {
 
 	b.WriteString(inputStyle.Render(input))
 	b.WriteString("\n")
-	
+
 	// Show validation hint if input is too short
 	trimmed := strings.TrimSpace(m.manualInput)
-	if trimmed != "" && len(trimmed) < 3 {
+	if trimmed != "" && len(trimmed) < minCommitMessageLength {
 		warningStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(ColorAccent)).
+			Foreground(lipgloss.Color(ColorWarning)).
 			Italic(true)
-		b.WriteString(warningStyle.Render("⚠ Message must be at least 3 characters"))
+		b.WriteString(
+			warningStyle.Render(fmt.Sprintf("Message must be at least %d characters", minCommitMessageLength)),
+		)
 		b.WriteString("\n")
 	}
-	
+
 	b.WriteString(helpStyle.Render(ManualInputHelp))
 
 	return b.String()
