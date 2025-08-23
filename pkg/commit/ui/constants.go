@@ -56,6 +56,12 @@ var footerCheckboxes = []Checkbox{
 	{CheckboxIDCreateTagPatch, CheckboxKeymap5, CheckboxLabelCreateTagPatch},
 }
 
+func IsTagCheckbox(id string) bool {
+	return id == CheckboxIDCreateTagMajor ||
+		id == CheckboxIDCreateTagMinor ||
+		id == CheckboxIDCreateTagPatch
+}
+
 // ----
 
 // UI Text

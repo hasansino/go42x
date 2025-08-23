@@ -170,7 +170,41 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if _, exists := m.checkboxes[checkboxID]; !exists {
 						return m, nil // Ignore unknown checkbox IDs
 					}
-					m.checkboxes[checkboxID] = !m.checkboxes[checkboxID]
+
+					// Check if dry-run is enabled and prevent toggling other checkboxes
+					if m.checkboxes[CheckboxDryRun] && checkboxID != CheckboxDryRun {
+						return m, nil // Don't allow toggling when dry-run is active
+					}
+
+					// Handle mutually exclusive tag checkboxes
+					if IsTagCheckbox(checkboxID) {
+						// Store current state before clearing
+						wasChecked := m.checkboxes[checkboxID]
+
+						// Clear all tag checkboxes
+						m.checkboxes[CheckboxIDCreateTagMajor] = false
+						m.checkboxes[CheckboxIDCreateTagMinor] = false
+						m.checkboxes[CheckboxIDCreateTagPatch] = false
+
+						// Toggle the selected one (allow unchecking)
+						m.checkboxes[checkboxID] = !wasChecked
+					} else if checkboxID == CheckboxDryRun {
+						// Toggle dry-run
+						m.checkboxes[checkboxID] = !m.checkboxes[checkboxID]
+
+						// If enabling dry-run, disable all other checkboxes
+						if m.checkboxes[CheckboxDryRun] {
+							for id := range m.checkboxes {
+								if id != CheckboxDryRun {
+									m.checkboxes[id] = false
+								}
+							}
+						}
+					} else {
+						// Normal toggle for other checkboxes
+						m.checkboxes[checkboxID] = !m.checkboxes[checkboxID]
+					}
+
 					return m, nil
 				}
 			}
@@ -251,33 +285,61 @@ func (m Model) renderFooter() string {
 		BorderTop(true).
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color(ColorBorder)).
-		MarginTop(1).
-		PaddingTop(1).
+		MarginTop(0).
+		PaddingTop(0).
 		PaddingBottom(0)
 
 	var checkboxes []string
 	for _, opt := range footerCheckboxes {
-		// Use bigger box characters
+		// Determine checkbox symbol based on type
 		var checkbox string
 		var boxStyle lipgloss.Style
 
-		if m.checkboxes[opt.id] {
-			// Filled box for checked state
-			checkbox = CheckboxChecked
-			boxStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color(ColorPrimary)) // Purple for checked
+		isDryRunActive := m.checkboxes[CheckboxDryRun] && opt.id != CheckboxDryRun
+
+		if IsTagCheckbox(opt.id) {
+			// Use radio buttons for mutually exclusive tag options
+			if m.checkboxes[opt.id] {
+				checkbox = "●" // Filled radio button
+				boxStyle = lipgloss.NewStyle().
+					Foreground(lipgloss.Color(ColorPrimary))
+			} else {
+				checkbox = "○" // Empty radio button
+				if isDryRunActive {
+					boxStyle = lipgloss.NewStyle().
+						Foreground(lipgloss.Color(ColorDimmedDarker))
+				} else {
+					boxStyle = lipgloss.NewStyle().
+						Foreground(lipgloss.Color(ColorMuted))
+				}
+			}
 		} else {
-			// Empty box for unchecked state
-			checkbox = CheckboxUnchecked
-			boxStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color(ColorMuted)) // Gray for unchecked
+			// Use checkboxes for regular options
+			if m.checkboxes[opt.id] {
+				checkbox = CheckboxChecked
+				boxStyle = lipgloss.NewStyle().
+					Foreground(lipgloss.Color(ColorPrimary))
+			} else {
+				checkbox = CheckboxUnchecked
+				if isDryRunActive {
+					boxStyle = lipgloss.NewStyle().
+						Foreground(lipgloss.Color(ColorDimmedDarker))
+				} else {
+					boxStyle = lipgloss.NewStyle().
+						Foreground(lipgloss.Color(ColorMuted))
+				}
+			}
 		}
 
 		// Style for the label
 		labelStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color(ColorNormal))
 
-		if m.checkboxes[opt.id] {
+		if isDryRunActive {
+			// Dim disabled items
+			labelStyle = labelStyle.
+				Foreground(lipgloss.Color(ColorDimmedDark))
+		} else if m.checkboxes[opt.id] {
 			labelStyle = labelStyle.
 				Foreground(lipgloss.Color(ColorPrimary)).
 				Bold(true)
@@ -287,7 +349,12 @@ func (m Model) renderFooter() string {
 		keyStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color(ColorDimmedDark))
 
-		// Format: 1 ▢ Label with styled components
+		if isDryRunActive {
+			keyStyle = keyStyle.
+				Foreground(lipgloss.Color(ColorDimmedDark))
+		}
+
+		// Format: 1 ▢ Label
 		item := keyStyle.Render(opt.key) + " " +
 			boxStyle.Render(checkbox) + " " +
 			labelStyle.Render(opt.label)

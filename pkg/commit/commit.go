@@ -153,10 +153,10 @@ func (s *Service) Execute(ctx context.Context) error {
 			messages,
 			map[string]bool{
 				ui.CheckboxDryRun:           s.options.DryRun,
-				ui.CheckboxIDPush:           s.options.Push,
-				ui.CheckboxIDCreateTagMajor: s.options.Tag == "major",
-				ui.CheckboxIDCreateTagMinor: s.options.Tag == "minor",
-				ui.CheckboxIDCreateTagPatch: s.options.Tag == "patch",
+				ui.CheckboxIDPush:           !s.options.DryRun && s.options.Push,
+				ui.CheckboxIDCreateTagMajor: !s.options.DryRun && s.options.Tag == "major",
+				ui.CheckboxIDCreateTagMinor: !s.options.DryRun && s.options.Tag == "minor",
+				ui.CheckboxIDCreateTagPatch: !s.options.DryRun && s.options.Tag == "patch",
 			},
 		)
 		if err != nil {
