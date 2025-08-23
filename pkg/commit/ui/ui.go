@@ -1,48 +1,37 @@
 package ui
 
 import (
+	"context"
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type InteractiveService struct{}
-
-func NewInteractiveService() *InteractiveService {
-	return &InteractiveService{}
-}
-
-func (s *InteractiveService) RenderInteractiveUI(
+// RenderInteractiveUI runs the interactive terminal UI for commit suggestions
+func RenderInteractiveUI(
+	ctx context.Context,
 	suggestions map[string]string,
 	checkboxStates map[string]bool,
 ) (*Model, error) {
-	model := newModel(suggestions, checkboxStates)
-	return s.runInteractiveUI(model)
-}
-
-func (s *InteractiveService) runInteractiveUI(model Model) (*Model, error) {
-	// Configure program with enhanced features
 	program := tea.NewProgram(
-		model,
-		tea.WithAltScreen(),       // Use alternate screen buffer
-		tea.WithMouseCellMotion(), // Enable mouse support
+		newModel(suggestions, checkboxStates),
+		tea.WithContext(ctx),
+		tea.WithAltScreen(), // keeps the terminal clean after exiting
 	)
 
-	// Start the program
-	finalModel, err := program.Run()
+	runResult, err := program.Run()
 	if err != nil {
-		return nil, fmt.Errorf("failed to run interactive UI: %w", err)
+		return nil, fmt.Errorf("failed to run interactive ui: %w", err)
 	}
 
-	// Extract the final result
-	uiModel, ok := finalModel.(Model)
+	finalState, ok := runResult.(Model)
 	if !ok {
-		return nil, fmt.Errorf("invalid model type returned from UI")
+		return nil, fmt.Errorf("invalid model type returned from ui")
 	}
 
-	if !uiModel.IsDone() {
-		return nil, fmt.Errorf("UI was cancelled by user")
+	if !finalState.IsDone() {
+		return nil, fmt.Errorf("ui was cancelled by user")
 	}
 
-	return &uiModel, nil
+	return &finalState, nil
 }

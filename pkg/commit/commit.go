@@ -14,8 +14,8 @@ import (
 type Options struct {
 	Logger          *slog.Logger
 	Providers       []string      // AI providers to use for commit message generation
-	CustomPrompt    string        // Custom prompt template for commit messages
 	Timeout         time.Duration // Timeout for API requests
+	CustomPrompt    string        // Custom prompt template for commit messages
 	First           bool          // Use the first received message and discard others
 	Auto            bool          // Auto-commit with the first suggestion, no interactive mode
 	DryRun          bool          // Show what would be committed without actually committing
@@ -44,7 +44,6 @@ type Service struct {
 	options   *Options
 	gitOps    *GitOperations
 	aiService *AIService
-	uiService *ui.InteractiveService
 	modules   []moduleAccessor
 }
 
@@ -66,7 +65,6 @@ func NewCommitService(options *Options, repoPath string) (*Service, error) {
 		options:   options,
 		gitOps:    git,
 		aiService: NewAIService(options.Logger, options.Timeout),
-		uiService: ui.NewInteractiveService(),
 		modules:   make([]moduleAccessor, 0),
 	}
 
@@ -150,10 +148,15 @@ func (s *Service) Execute(ctx context.Context) error {
 	} else {
 		s.options.Logger.DebugContext(ctx, "Using interactive mode...")
 
-		uiModel, err := s.uiService.RenderInteractiveUI(
-			messages, map[string]bool{
-				ui.CheckboxSign: false,
-				ui.CheckboxPush: s.options.Push,
+		uiModel, err := ui.RenderInteractiveUI(
+			ctx,
+			messages,
+			map[string]bool{
+				ui.CheckboxDryRun:           s.options.DryRun,
+				ui.CheckboxIDPush:           s.options.Push,
+				ui.CheckboxIDCreateTagMajor: s.options.Tag == "major",
+				ui.CheckboxIDCreateTagMinor: s.options.Tag == "minor",
+				ui.CheckboxIDCreateTagPatch: s.options.Tag == "patch",
 			},
 		)
 		if err != nil {
@@ -162,6 +165,19 @@ func (s *Service) Execute(ctx context.Context) error {
 		}
 
 		commitMessage = uiModel.GetFinalChoice()
+
+		// override flags if user interacted with checkboxes
+		s.options.DryRun = uiModel.GetCheckboxValue(ui.CheckboxDryRun)
+		s.options.Push = uiModel.GetCheckboxValue(ui.CheckboxIDPush)
+		if uiModel.GetCheckboxValue(ui.CheckboxIDCreateTagMajor) {
+			s.options.Tag = "major"
+		}
+		if uiModel.GetCheckboxValue(ui.CheckboxIDCreateTagMinor) {
+			s.options.Tag = "minor"
+		}
+		if uiModel.GetCheckboxValue(ui.CheckboxIDCreateTagPatch) {
+			s.options.Tag = "patch"
+		}
 	}
 
 	if len(commitMessage) == 0 {
@@ -247,10 +263,7 @@ func (s *Service) Execute(ctx context.Context) error {
 			}
 		}
 	} else {
-		s.options.Logger.WarnContext(
-			ctx, "Dry run enabled, no artifacts created",
-			"commit_message", commitMessage,
-		)
+		s.options.Logger.WarnContext(ctx, "Dry run enabled, no side effects created")
 	}
 
 	return nil

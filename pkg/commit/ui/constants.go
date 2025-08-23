@@ -1,21 +1,62 @@
 package ui
 
-// Checkbox IDs
+// ---- Checkboxes ----
+
 const (
-	CheckboxSign    = "sign"
-	CheckboxPush    = "push"
-	CheckboxHooks   = "tag_major"
-	CheckboxVerbose = "tag_minor"
-	CheckboxAmend   = "tag_patch"
+	CheckboxDryRun           = "dry_run"
+	CheckboxIDPush           = "push"
+	CheckboxIDCreateTagMajor = "create_tag_major"
+	CheckboxIDCreateTagMinor = "create_tag_minor"
+	CheckboxIDCreateTagPatch = "create_tag_patch"
 )
 
-var checkboxDefaults = map[string]bool{
-	CheckboxSign:    false,
-	CheckboxPush:    false,
-	CheckboxHooks:   false,
-	CheckboxVerbose: false,
-	CheckboxAmend:   false,
+const (
+	CheckboxLabelDryRun         = "Dry run"
+	CheckboxLabelPush           = "Push to remote"
+	CheckboxLabelCreateTagMajor = "Tag (major)"
+	CheckboxLabelCreateTagMinor = "Tag (minor)"
+	CheckboxLabelCreateTagPatch = "Tag (patch)"
+)
+
+const (
+	CheckboxKeymap1 = "1"
+	CheckboxKeymap2 = "2"
+	CheckboxKeymap3 = "3"
+	CheckboxKeymap4 = "4"
+	CheckboxKeymap5 = "5"
+)
+
+var checkboxKeymaps = map[string]string{
+	CheckboxDryRun:           CheckboxKeymap1,
+	CheckboxIDPush:           CheckboxKeymap2,
+	CheckboxIDCreateTagMajor: CheckboxKeymap3,
+	CheckboxIDCreateTagMinor: CheckboxKeymap4,
+	CheckboxIDCreateTagPatch: CheckboxKeymap5,
 }
+
+var checkboxDefaults = map[string]bool{
+	CheckboxDryRun:           false,
+	CheckboxIDPush:           false,
+	CheckboxIDCreateTagMajor: false,
+	CheckboxIDCreateTagMinor: false,
+	CheckboxIDCreateTagPatch: false,
+}
+
+type Checkbox struct {
+	id    string
+	key   string
+	label string
+}
+
+var footerCheckboxes = []Checkbox{
+	{CheckboxDryRun, CheckboxKeymap1, CheckboxLabelDryRun},
+	{CheckboxIDPush, CheckboxKeymap2, CheckboxLabelPush},
+	{CheckboxIDCreateTagMajor, CheckboxKeymap3, CheckboxLabelCreateTagMajor},
+	{CheckboxIDCreateTagMinor, CheckboxKeymap4, CheckboxLabelCreateTagMinor},
+	{CheckboxIDCreateTagPatch, CheckboxKeymap5, CheckboxLabelCreateTagPatch},
+}
+
+// ----
 
 // UI Text
 const (
@@ -28,15 +69,6 @@ const (
 	ProviderManual    = "manual"
 )
 
-// Checkbox Labels
-const (
-	LabelSign    = "Sign commit"
-	LabelPush    = "Push to remote"
-	LabelHooks   = "Tag: major"
-	LabelVerbose = "Tag: minor"
-	LabelAmend   = "Tag: patch"
-)
-
 // Unicode Characters
 const (
 	CheckboxChecked   = "▣"
@@ -44,18 +76,18 @@ const (
 	Cursor            = "│"
 )
 
-// Colors (lipgloss color codes)
+// ANSI 256 Colors (8-bit)
 const (
-	ColorPrimary      = "170" // Purple
-	ColorSecondary    = "245" // Light gray
-	ColorNormal       = "250" // White-ish
-	ColorDimmed       = "240" // Gray
-	ColorDimmedDark   = "238" // Dark gray
-	ColorDimmedDarker = "236" // Darker gray
-	ColorBorder       = "240" // Border gray
-	ColorAccent       = "62"  // Accent color
-	ColorBright       = "230" // Bright
-	ColorMuted        = "241" // Muted gray
+	ColorPrimary      = "170"
+	ColorSecondary    = "255"
+	ColorNormal       = "250"
+	ColorDimmed       = "240"
+	ColorDimmedDark   = "238"
+	ColorDimmedDarker = "236"
+	ColorBorder       = "240"
+	ColorAccent       = "62"
+	ColorBright       = "230"
+	ColorMuted        = "241"
 )
 
 // Layout Constants
@@ -82,13 +114,4 @@ const (
 	KeyBackspace   = "backspace"
 	KeySpace       = " "
 	KeyInterrupt   = "ctrl+c"
-)
-
-// Checkbox toggle keys
-const (
-	Key1 = "1"
-	Key2 = "2"
-	Key3 = "3"
-	Key4 = "4"
-	Key5 = "5"
 )

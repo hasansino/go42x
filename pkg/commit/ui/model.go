@@ -20,8 +20,7 @@ type Model struct {
 	done        bool
 	width       int
 	height      int
-	// Checkbox states for footer options
-	checkboxes map[string]bool
+	checkboxes  map[string]bool
 }
 
 // newModel creates a new UI model with fancy list
@@ -44,8 +43,8 @@ func newModel(suggestions map[string]string, checkboxStates map[string]bool) Mod
 	// Create the list with custom delegate
 	l := list.New(items, delegate, 0, listHeight)
 	l.Title = ListTitle
-	l.SetShowStatusBar(true)
-	l.SetFilteringEnabled(true)
+	l.SetShowStatusBar(false)
+	l.SetFilteringEnabled(false)
 	l.SetShowHelp(true)
 	l.DisableQuitKeybindings() // We'll handle quit ourselves
 
@@ -54,7 +53,12 @@ func newModel(suggestions map[string]string, checkboxStates map[string]bool) Mod
 		Background(lipgloss.Color(ColorAccent)).
 		Foreground(lipgloss.Color(ColorBright)).
 		Bold(true).
-		Padding(0, 1)
+		Italic(true).
+		Padding(0, 2).
+		MarginBottom(1).
+		BorderStyle(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(ColorAccent)).
+		BorderBottom(true)
 
 	l.Styles.PaginationStyle = lipgloss.NewStyle().
 		Foreground(lipgloss.Color(ColorDimmed))
@@ -130,7 +134,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.list.SetWidth(msg.Width)
-
 		// Adjust list height based on window size
 		// Account for: padding + footer
 		availableHeight := msg.Height - FooterHeightApprox
@@ -138,7 +141,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.list.SetHeight(availableHeight)
 		}
 		return m, nil
-
 	case tea.KeyMsg:
 		if m.manualMode {
 			return m.updateManualMode(msg)
@@ -149,7 +151,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case KeyInterrupt, KeyQuit:
 			m.done = true
 			return m, tea.Quit
-
 		case KeySelect:
 			selected := m.list.SelectedItem()
 			if item, ok := selected.(CommitItem); ok {
@@ -163,23 +164,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			return m, nil
-
-		// Toggle checkboxes with number keys
-		case Key1:
-			m.checkboxes[CheckboxSign] = !m.checkboxes[CheckboxSign]
-			return m, nil
-		case Key2:
-			m.checkboxes[CheckboxPush] = !m.checkboxes[CheckboxPush]
-			return m, nil
-		case Key3:
-			m.checkboxes[CheckboxHooks] = !m.checkboxes[CheckboxHooks]
-			return m, nil
-		case Key4:
-			m.checkboxes[CheckboxVerbose] = !m.checkboxes[CheckboxVerbose]
-			return m, nil
-		case Key5:
-			m.checkboxes[CheckboxAmend] = !m.checkboxes[CheckboxAmend]
-			return m, nil
+		default:
+			for checkboxID, checkboxKey := range checkboxKeymaps {
+				if msg.String() == checkboxKey {
+					if _, exists := m.checkboxes[checkboxID]; !exists {
+						return m, nil // Ignore unknown checkbox IDs
+					}
+					m.checkboxes[checkboxID] = !m.checkboxes[checkboxID]
+					return m, nil
+				}
+			}
 		}
 	}
 
@@ -199,15 +193,12 @@ func (m Model) updateManualMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case KeyInterrupt:
 		m.done = true
 		return m, tea.Quit
-
 	case KeyCancel:
 		m.manualMode = false
 		m.manualInput = ""
-
 	case KeyNewLine:
 		// Enter for new lines
 		m.manualInput += "\n"
-
 	case KeyFinishInput:
 		// Ctrl+D to finish multi-line input
 		if strings.TrimSpace(m.manualInput) != "" {
@@ -215,7 +206,6 @@ func (m Model) updateManualMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.done = true
 			return m, tea.Quit
 		}
-
 	case KeyBackspace:
 		if len(m.manualInput) > 0 {
 			runes := []rune(m.manualInput)
@@ -223,16 +213,13 @@ func (m Model) updateManualMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.manualInput = string(runes[:len(runes)-1])
 			}
 		}
-
 	case KeySpace:
 		m.manualInput += " "
-
 	default:
 		if msg.Type == tea.KeyRunes {
 			m.manualInput += string(msg.Runes)
 		}
 	}
-
 	return m, nil
 }
 
@@ -249,32 +236,17 @@ func (m Model) View() string {
 		return paddedStyle.Render(m.renderManualMode())
 	}
 
-	// Render list view with footer
-	listView := m.list.View()
-	footer := m.renderFooter()
-
-	// Combine list and footer
-	combined := lipgloss.JoinVertical(lipgloss.Left, listView, footer)
-
-	return paddedStyle.Render(combined)
+	return paddedStyle.Render(
+		lipgloss.JoinVertical(
+			lipgloss.Left,
+			m.list.View(),
+			m.renderFooter(),
+		),
+	)
 }
 
 // renderFooter renders the checkbox footer
 func (m Model) renderFooter() string {
-	// Define checkbox options with their labels and shortcuts
-	options := []struct {
-		key   string
-		id    string
-		label string
-	}{
-		{Key1, CheckboxSign, LabelSign},
-		{Key2, CheckboxPush, LabelPush},
-		{Key3, CheckboxHooks, LabelHooks},
-		{Key4, CheckboxVerbose, LabelVerbose},
-		{Key5, CheckboxAmend, LabelAmend},
-	}
-
-	// Footer container style
 	footerStyle := lipgloss.NewStyle().
 		BorderTop(true).
 		BorderStyle(lipgloss.NormalBorder()).
@@ -283,9 +255,8 @@ func (m Model) renderFooter() string {
 		PaddingTop(1).
 		PaddingBottom(0)
 
-	// Build checkbox line
 	var checkboxes []string
-	for _, opt := range options {
+	for _, opt := range footerCheckboxes {
 		// Use bigger box characters
 		var checkbox string
 		var boxStyle lipgloss.Style
@@ -325,14 +296,14 @@ func (m Model) renderFooter() string {
 	}
 
 	// Join checkboxes horizontally with spacing
-	checkboxLine := lipgloss.JoinHorizontal(
-		lipgloss.Top,
-		checkboxes[0], "  ",
-		checkboxes[1], "  ",
-		checkboxes[2], "  ",
-		checkboxes[3], "  ",
-		checkboxes[4],
-	)
+	parts := make([]string, 0, max(0, len(checkboxes)*2-1))
+	for i, cb := range checkboxes {
+		if i > 0 {
+			parts = append(parts, "  ")
+		}
+		parts = append(parts, cb)
+	}
+	checkboxLine := lipgloss.JoinHorizontal(lipgloss.Top, parts...)
 
 	// Help text
 	helpStyle := lipgloss.NewStyle().
@@ -408,12 +379,9 @@ func (m Model) IsDone() bool {
 	return m.done
 }
 
-// GetCheckboxStates returns the current state of all checkboxes
-func (m Model) GetCheckboxStates() map[string]bool {
-	// Return a copy to prevent external modification
-	states := make(map[string]bool)
-	for k, v := range m.checkboxes {
-		states[k] = v
+func (m Model) GetCheckboxValue(id string) bool {
+	if value, exists := m.checkboxes[id]; exists {
+		return value
 	}
-	return states
+	return false
 }
