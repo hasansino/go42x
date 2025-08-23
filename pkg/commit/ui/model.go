@@ -172,7 +172,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 
 					// Check if dry-run is enabled and prevent toggling other checkboxes
-					if m.checkboxes[CheckboxDryRun] && checkboxID != CheckboxDryRun {
+					if m.checkboxes[CheckboxIDDryRun] && checkboxID != CheckboxIDDryRun {
 						return m, nil // Don't allow toggling when dry-run is active
 					}
 
@@ -188,14 +188,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 						// Toggle the selected one (allow unchecking)
 						m.checkboxes[checkboxID] = !wasChecked
-					} else if checkboxID == CheckboxDryRun {
+					} else if checkboxID == CheckboxIDDryRun {
 						// Toggle dry-run
 						m.checkboxes[checkboxID] = !m.checkboxes[checkboxID]
 
 						// If enabling dry-run, disable all other checkboxes
-						if m.checkboxes[CheckboxDryRun] {
+						if m.checkboxes[CheckboxIDDryRun] {
 							for id := range m.checkboxes {
-								if id != CheckboxDryRun {
+								if id != CheckboxIDDryRun {
 									m.checkboxes[id] = false
 								}
 							}
@@ -235,11 +235,13 @@ func (m Model) updateManualMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.manualInput += "\n"
 	case KeyFinishInput:
 		// Ctrl+D to finish multi-line input
-		if strings.TrimSpace(m.manualInput) != "" {
-			m.finalChoice = strings.TrimSpace(m.manualInput)
+		trimmed := strings.TrimSpace(m.manualInput)
+		if trimmed != "" && len(trimmed) >= 3 { // Require at least 3 characters
+			m.finalChoice = trimmed
 			m.done = true
 			return m, tea.Quit
 		}
+		// Ignore if input is too short
 	case KeyBackspace:
 		if len(m.manualInput) > 0 {
 			runes := []rune(m.manualInput)
@@ -295,7 +297,7 @@ func (m Model) renderFooter() string {
 		var checkbox string
 		var boxStyle lipgloss.Style
 
-		isDryRunActive := m.checkboxes[CheckboxDryRun] && opt.id != CheckboxDryRun
+		isDryRunActive := m.checkboxes[CheckboxIDDryRun] && opt.id != CheckboxIDDryRun
 
 		if IsTagCheckbox(opt.id) {
 			// Use radio buttons for mutually exclusive tag options
@@ -351,7 +353,7 @@ func (m Model) renderFooter() string {
 
 		if isDryRunActive {
 			keyStyle = keyStyle.
-				Foreground(lipgloss.Color(ColorDimmedDark))
+				Foreground(lipgloss.Color(ColorDimmedDarker))
 		}
 
 		// Format: 1 ▢ Label
@@ -424,6 +426,17 @@ func (m Model) renderManualMode() string {
 
 	b.WriteString(inputStyle.Render(input))
 	b.WriteString("\n")
+	
+	// Show validation hint if input is too short
+	trimmed := strings.TrimSpace(m.manualInput)
+	if trimmed != "" && len(trimmed) < 3 {
+		warningStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(ColorAccent)).
+			Italic(true)
+		b.WriteString(warningStyle.Render("⚠ Message must be at least 3 characters"))
+		b.WriteString("\n")
+	}
+	
 	b.WriteString(helpStyle.Render(ManualInputHelp))
 
 	return b.String()

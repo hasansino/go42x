@@ -152,7 +152,7 @@ func (s *Service) Execute(ctx context.Context) error {
 			ctx,
 			messages,
 			map[string]bool{
-				ui.CheckboxDryRun:           s.options.DryRun,
+				ui.CheckboxIDDryRun:         s.options.DryRun,
 				ui.CheckboxIDPush:           !s.options.DryRun && s.options.Push,
 				ui.CheckboxIDCreateTagMajor: !s.options.DryRun && s.options.Tag == "major",
 				ui.CheckboxIDCreateTagMinor: !s.options.DryRun && s.options.Tag == "minor",
@@ -167,8 +167,10 @@ func (s *Service) Execute(ctx context.Context) error {
 		commitMessage = uiModel.GetFinalChoice()
 
 		// override flags if user interacted with checkboxes
-		s.options.DryRun = uiModel.GetCheckboxValue(ui.CheckboxDryRun)
+		s.options.DryRun = uiModel.GetCheckboxValue(ui.CheckboxIDDryRun)
 		s.options.Push = uiModel.GetCheckboxValue(ui.CheckboxIDPush)
+
+		s.options.Tag = ""
 		if uiModel.GetCheckboxValue(ui.CheckboxIDCreateTagMajor) {
 			s.options.Tag = "major"
 		}

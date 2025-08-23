@@ -3,7 +3,7 @@ package ui
 // ---- Checkboxes ----
 
 const (
-	CheckboxDryRun           = "dry_run"
+	CheckboxIDDryRun         = "dry_run"
 	CheckboxIDPush           = "push"
 	CheckboxIDCreateTagMajor = "create_tag_major"
 	CheckboxIDCreateTagMinor = "create_tag_minor"
@@ -27,7 +27,7 @@ const (
 )
 
 var checkboxKeymaps = map[string]string{
-	CheckboxDryRun:           CheckboxKeymap1,
+	CheckboxIDDryRun:         CheckboxKeymap1,
 	CheckboxIDPush:           CheckboxKeymap2,
 	CheckboxIDCreateTagMajor: CheckboxKeymap3,
 	CheckboxIDCreateTagMinor: CheckboxKeymap4,
@@ -35,7 +35,7 @@ var checkboxKeymaps = map[string]string{
 }
 
 var checkboxDefaults = map[string]bool{
-	CheckboxDryRun:           false,
+	CheckboxIDDryRun:         false,
 	CheckboxIDPush:           false,
 	CheckboxIDCreateTagMajor: false,
 	CheckboxIDCreateTagMinor: false,
@@ -49,7 +49,7 @@ type Checkbox struct {
 }
 
 var footerCheckboxes = []Checkbox{
-	{CheckboxDryRun, CheckboxKeymap1, CheckboxLabelDryRun},
+	{CheckboxIDDryRun, CheckboxKeymap1, CheckboxLabelDryRun},
 	{CheckboxIDPush, CheckboxKeymap2, CheckboxLabelPush},
 	{CheckboxIDCreateTagMajor, CheckboxKeymap3, CheckboxLabelCreateTagMajor},
 	{CheckboxIDCreateTagMinor, CheckboxKeymap4, CheckboxLabelCreateTagMinor},
@@ -98,9 +98,10 @@ const (
 
 // Layout Constants
 const (
-	PaddingTop         = 2
-	PaddingHorizontal  = 4
-	FooterHeightApprox = 10 // Approximate height needed for footer
+	PaddingTop        = 2
+	PaddingHorizontal = 4
+	// Approximate height needed for footer (border + checkbox line + help text)
+	FooterHeightApprox = 10
 	DefaultListHeight  = 10
 	MaxListHeight      = 15
 	MinListHeight      = 3
