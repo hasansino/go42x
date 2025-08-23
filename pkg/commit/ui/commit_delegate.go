@@ -107,13 +107,22 @@ func (d commitDelegate) Render(w io.Writer, m list.Model, index int, item list.I
 	// Apply styles based on selection state
 	if isSelected {
 		// Highlight with left border only, no background
+		// Calculate width accounting for:
+		// - List's internal padding/margins (approx 4)
+		// - Border (1)
+		// - Our padding (3)
+		calculatedWidth := m.Width() - 8
+		if calculatedWidth < 20 {
+			calculatedWidth = 20 // Minimum width
+		}
+
 		selectedStyle := lipgloss.NewStyle().
 			BorderLeft(true).
 			BorderStyle(lipgloss.ThickBorder()).
 			BorderForeground(lipgloss.Color(ColorPrimary)). // Purple accent on left
 			PaddingLeft(1).
 			PaddingRight(2).
-			Width(m.Width() - 8) // Account for list padding
+			Width(calculatedWidth)
 
 		titleStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color(ColorPrimary)).

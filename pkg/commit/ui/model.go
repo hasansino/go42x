@@ -134,12 +134,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.list.SetWidth(msg.Width)
-		// Adjust list height based on window size
-		// Account for: padding + footer
-		availableHeight := msg.Height - FooterHeightApprox
-		if availableHeight > 0 {
+
+		// Calculate available width accounting for padding
+		availableWidth := msg.Width - (PaddingHorizontal * 2)
+		if availableWidth > 0 {
+			m.list.SetWidth(availableWidth)
+		}
+
+		// Calculate available height accounting for:
+		// - Top padding
+		// - Footer (border + checkboxes + help text)
+		// - Bottom margin
+		availableHeight := msg.Height - PaddingTop - FooterHeightApprox - 1
+		if availableHeight > MinListHeight {
 			m.list.SetHeight(availableHeight)
+		} else {
+			m.list.SetHeight(MinListHeight)
 		}
 		return m, nil
 	case tea.KeyMsg:
@@ -284,13 +294,20 @@ func (m Model) View() string {
 
 // renderFooter renders the checkbox footer
 func (m Model) renderFooter() string {
+	// Calculate available width for footer
+	availableWidth := m.width - (PaddingHorizontal * 2)
+	if availableWidth < 40 {
+		availableWidth = 40 // Minimum width
+	}
+
 	footerStyle := lipgloss.NewStyle().
 		BorderTop(true).
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color(ColorBorder)).
 		MarginTop(0).
 		PaddingTop(0).
-		PaddingBottom(0)
+		PaddingBottom(0).
+		Width(availableWidth)
 
 	var checkboxes []string
 	for _, opt := range footerCheckboxes {
@@ -396,11 +413,21 @@ func (m Model) renderManualMode() string {
 		Foreground(lipgloss.Color(ColorPrimary)).
 		MarginBottom(1)
 
+	// Calculate input width accounting for:
+	// - Horizontal padding (PaddingHorizontal * 2)
+	// - Border (2 characters)
+	// - Internal padding (2 characters)
+	maxInputWidth := m.width - (PaddingHorizontal * 2) - 4
+	inputWidth := min(ManualInputWidth, maxInputWidth)
+	if inputWidth < 20 {
+		inputWidth = 20 // Minimum usable width
+	}
+
 	inputStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(ColorAccent)).
 		Padding(1).
-		Width(min(ManualInputWidth, m.width-4)).
+		Width(inputWidth).
 		Height(ManualInputHeight)
 
 	helpStyle := lipgloss.NewStyle().

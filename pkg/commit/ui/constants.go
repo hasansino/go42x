@@ -102,7 +102,7 @@ const (
 	PaddingTop        = 2
 	PaddingHorizontal = 4
 	// Approximate height needed for footer (border + checkbox line + help text)
-	FooterHeightApprox = 10
+	FooterHeightApprox = 5
 	DefaultListHeight  = 10
 	MaxListHeight      = 15
 	MinListHeight      = 3
