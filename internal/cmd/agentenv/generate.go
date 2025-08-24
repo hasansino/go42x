@@ -1,4 +1,4 @@
-package generate
+package agentenv
 
 import (
 	"fmt"
@@ -10,25 +10,19 @@ import (
 	"github.com/hasansino/go42x/pkg/agentenv"
 )
 
-func newGenerateAgentEnvCommand(f *cmdutil.Factory) *cobra.Command {
-	settings := new(agentenv.Settings)
-
+func newGenerateCommand(f *cmdutil.Factory, settings *agentenv.Settings) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "agentenv",
 		Short: "Generate ai agent configuration",
 		Long:  `Generate ai agent configuration`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runGenerateAgentEnvCommand(f, settings)
+			return runGenerateCommand(f, settings)
 		},
 	}
-
-	cmd.Flags().StringVarP(&settings.ConfigPath, "config", "c", ".", "path to config file")
-	cmd.Flags().StringVarP(&settings.OutputPath, "output", "o", ".", "path to output directory")
-
 	return cmd
 }
 
-func runGenerateAgentEnvCommand(f *cmdutil.Factory, settings *agentenv.Settings) error {
+func runGenerateCommand(f *cmdutil.Factory, settings *agentenv.Settings) error {
 	service, err := agentenv.NewAgentEnvService(
 		settings,
 		agentenv.WithLogger(slog.Default()),
@@ -36,5 +30,5 @@ func runGenerateAgentEnvCommand(f *cmdutil.Factory, settings *agentenv.Settings)
 	if err != nil {
 		return fmt.Errorf("failed to initialize agentenv service: %w", err)
 	}
-	return service.Execute(f.Context())
+	return service.Generate(f.Context())
 }

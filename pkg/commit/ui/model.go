@@ -13,6 +13,7 @@ import (
 // Model represents the state of the terminal UI
 type Model struct {
 	list        list.Model
+	delegate    *commitDelegate
 	suggestions map[string]string
 	choices     []list.Item
 	manualMode  bool
@@ -29,7 +30,8 @@ func newModel(suggestions map[string]string, checkboxStates map[string]bool) Mod
 	items := buildListItems(suggestions)
 
 	// Create custom delegate for multi-line support
-	delegate := newCommitDelegate()
+	delegateValue := newCommitDelegate()
+	delegate := &delegateValue
 
 	// Calculate appropriate height based on number of items
 	listHeight := DefaultListHeight
@@ -86,6 +88,7 @@ func newModel(suggestions map[string]string, checkboxStates map[string]bool) Mod
 
 	return Model{
 		list:        l,
+		delegate:    delegate,
 		suggestions: suggestions,
 		choices:     items,
 		manualMode:  false,
@@ -134,6 +137,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+
+		// Update delegate width for dynamic description length
+		if m.delegate != nil {
+			m.delegate.SetWidth(msg.Width)
+		}
 
 		// Calculate available width accounting for padding
 		availableWidth := msg.Width - (PaddingHorizontal * 2)

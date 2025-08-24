@@ -11,7 +11,7 @@ import (
 	"github.com/lmittmann/tint"
 	"github.com/spf13/cobra"
 
-	"github.com/hasansino/go42x/internal/cmd/generate"
+	"github.com/hasansino/go42x/internal/cmd/agentenv"
 	"github.com/hasansino/go42x/internal/cmd/tool"
 	"github.com/hasansino/go42x/internal/cmdutil"
 )
@@ -44,7 +44,7 @@ func NewGo42Command(ctx context.Context, f *cmdutil.Factory) *cobra.Command {
 	f.BindFlags(cmd.PersistentFlags())
 
 	cmd.AddCommand(NewVersionCommand())
-	cmd.AddCommand(generate.NewGenerateCommand(f))
+	cmd.AddCommand(agentenv.NewAgentEnvCommand(f))
 	cmd.AddCommand(tool.NewToolsCommand(f))
 
 	return cmd

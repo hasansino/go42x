@@ -30,6 +30,10 @@ func NewAgentEnvService(settings *Settings, opts ...Option) (*Service, error) {
 	return svc, nil
 }
 
-func (s *Service) Execute(ctx context.Context) error {
+func (s *Service) Init(ctx context.Context) error {
+	return nil
+}
+
+func (s *Service) Generate(ctx context.Context) error {
 	return nil
 }

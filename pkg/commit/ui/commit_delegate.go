@@ -16,6 +16,7 @@ type commitDelegate struct {
 	height     int
 	spacing    int
 	showDetail bool
+	width      int
 }
 
 func newCommitDelegate() commitDelegate {
@@ -24,6 +25,7 @@ func newCommitDelegate() commitDelegate {
 		height:     3, // Height for each item
 		spacing:    1,
 		showDetail: true,
+		width:      0, // Will be set via SetWidth
 	}
 
 	// Customize styles
@@ -57,11 +59,36 @@ func (d commitDelegate) Spacing() int {
 	return d.spacing
 }
 
+func (d *commitDelegate) SetWidth(width int) {
+	d.width = width
+}
+
+func (d *commitDelegate) getMaxDescriptionLen() int {
+	// Calculate max description length based on terminal width
+	// Reserve space for padding, borders, and other UI elements
+	if d.width <= 0 {
+		return MaxDescriptionLen // Use default if width not set
+	}
+	
+	// Reserve approximately 20 chars for UI elements and padding
+	availableWidth := d.width - 20
+	
+	// Set minimum and maximum bounds
+	if availableWidth < 30 {
+		return 30 // Minimum description length
+	}
+	if availableWidth > 120 {
+		return 120 // Maximum description length for readability
+	}
+	
+	return availableWidth
+}
+
 func (d commitDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd {
 	return nil
 }
 
-func (d commitDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
+func (d *commitDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
 	commit, ok := item.(CommitItem)
 	if !ok {
 		return
@@ -94,8 +121,9 @@ func (d commitDelegate) Render(w io.Writer, m list.Model, index int, item list.I
 		firstLine := ""
 		if len(commit.lines) > 0 {
 			firstLine = commit.lines[0]
-			if len(firstLine) > MaxDescriptionLen {
-				firstLine = firstLine[:MaxDescriptionLen-3] + "..."
+			maxLen := d.getMaxDescriptionLen()
+			if len(firstLine) > maxLen {
+				firstLine = firstLine[:maxLen-3] + "..."
 			}
 		}
 		desc = firstLine
