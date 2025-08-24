@@ -26,12 +26,12 @@ func (p *TranscriptParser) ExtractLastAssistantMessage(transcriptPath string) (s
 	if transcriptPath == "" {
 		return "", fmt.Errorf("transcript path is empty")
 	}
-	
+
 	data, err := os.ReadFile(transcriptPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read transcript: %w", err)
 	}
-	
+
 	return p.ExtractLastAssistantMessageFromData(data)
 }
 
@@ -39,18 +39,18 @@ func (p *TranscriptParser) ExtractLastAssistantMessage(transcriptPath string) (s
 func (p *TranscriptParser) ExtractLastAssistantMessageFromData(data []byte) (string, error) {
 	lines := strings.Split(string(data), "\n")
 	lastMessage := ""
-	
+
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
-		
+
 		var entry TranscriptEntry
 		if err := json.Unmarshal([]byte(line), &entry); err != nil {
 			continue // Skip invalid JSON lines
 		}
-		
+
 		// Check if this is an assistant message
 		if entry.Type == "assistant" {
 			if msg := p.extractMessageContent(&entry); msg != "" {
@@ -58,7 +58,7 @@ func (p *TranscriptParser) ExtractLastAssistantMessageFromData(data []byte) (str
 			}
 		}
 	}
-	
+
 	return lastMessage, nil
 }
 
@@ -67,26 +67,26 @@ func (p *TranscriptParser) ExtractAllAssistantMessages(transcriptPath string) ([
 	if transcriptPath == "" {
 		return nil, fmt.Errorf("transcript path is empty")
 	}
-	
+
 	data, err := os.ReadFile(transcriptPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read transcript: %w", err)
 	}
-	
+
 	lines := strings.Split(string(data), "\n")
 	var messages []string
-	
+
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
-		
+
 		var entry TranscriptEntry
 		if err := json.Unmarshal([]byte(line), &entry); err != nil {
 			continue // Skip invalid JSON lines
 		}
-		
+
 		// Check if this is an assistant message
 		if entry.Type == "assistant" {
 			if msg := p.extractMessageContent(&entry); msg != "" {
@@ -94,7 +94,7 @@ func (p *TranscriptParser) ExtractAllAssistantMessages(transcriptPath string) ([
 			}
 		}
 	}
-	
+
 	return messages, nil
 }
 
@@ -104,7 +104,7 @@ func (p *TranscriptParser) extractMessageContent(entry *TranscriptEntry) string 
 	if !ok || len(message) == 0 {
 		return ""
 	}
-	
+
 	var textParts []string
 	for _, item := range message {
 		if contentMap, ok := item.(map[string]interface{}); ok {
@@ -115,6 +115,6 @@ func (p *TranscriptParser) extractMessageContent(entry *TranscriptEntry) string 
 			}
 		}
 	}
-	
+
 	return strings.Join(textParts, "\n")
 }

@@ -69,10 +69,10 @@ func (d *commitDelegate) getMaxDescriptionLen() int {
 	if d.width <= 0 {
 		return MaxDescriptionLen // Use default if width not set
 	}
-	
+
 	// Reserve approximately 20 chars for UI elements and padding
 	availableWidth := d.width - 20
-	
+
 	// Set minimum and maximum bounds
 	if availableWidth < 30 {
 		return 30 // Minimum description length
@@ -80,7 +80,7 @@ func (d *commitDelegate) getMaxDescriptionLen() int {
 	if availableWidth > 120 {
 		return 120 // Maximum description length for readability
 	}
-	
+
 	return availableWidth
 }
 

@@ -46,7 +46,7 @@ func New(name string, processor Processor, opts ...Option) (*Hook, error) {
 	}
 
 	if h.logger == nil {
-		h.logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+		h.logger = slog.New(slog.DiscardHandler)
 	}
 
 	h.logger = h.logger.With("hook", h.name)
