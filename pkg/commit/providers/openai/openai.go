@@ -83,7 +83,7 @@ func (p *OpenAI) Ask(ctx context.Context, prompt string) ([]string, error) {
 	}
 
 	text := strings.TrimSpace(candidate.Message.Content)
-	text = strings.Trim(text, "`")
+	text = strings.Trim(text, "```") // nolint
 	text = strings.Trim(text, "\n")
 
 	return []string{text}, nil

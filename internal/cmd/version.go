@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/hasansino/go42x/internal/build"
+	"github.com/hasansino/go42x/internal/version"
 )
 
 func NewVersionCommand() *cobra.Command {
@@ -15,7 +15,7 @@ func NewVersionCommand() *cobra.Command {
 		Short: "Version information",
 		Long:  `Version information`,
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("Version: %s\n", build.GetVersion())
+			fmt.Printf("Version: %s\n", version.GetVersion())
 			fmt.Printf("Go:      %s\n", runtime.Version())
 			fmt.Printf("OS/Arch: %s/%s\n", runtime.GOOS, runtime.GOARCH)
 		},

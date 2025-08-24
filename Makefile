@@ -31,6 +31,10 @@ build:
 	@go build -gcflags="all=-N -l" -race -v -o ./build/go42x .
 	@file -h ./build/go42x && du -h ./build/go42x && sha256sum ./build/go42x && go tool buildid ./build/go42x
 
+## build-hooks | build agent hooks
+build-hooks:
+	@go build -gcflags="all=-N -l" -race -v -o ./.claude/hooks/claude_hook_voice ./agentenv/claude/hooks/voice/main.go
+
 ## image | build docker image
 # @see https://reproducible-builds.org/docs/source-date-epoch/
 image:

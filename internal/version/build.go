@@ -1,12 +1,11 @@
-package build
+package version
 
 import (
 	"runtime/debug"
 )
 
-var (
-	xBuildVersion = "dev"
-)
+// set during compile time
+var xBuildVersion = "dev"
 
 func GetVersion() string {
 	if xBuildVersion != "dev" {

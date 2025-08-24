@@ -12,41 +12,43 @@ import (
 )
 
 func newCommitCommand(f *cmdutil.Factory) *cobra.Command {
-	options := new(commit.Options)
+	settings := new(commit.Settings)
 
 	cmd := &cobra.Command{
 		Use:   "commit",
 		Short: "Git commit automation",
 		Long:  `Git commit automation`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runCommitCommand(f, options)
+			return runCommitCommand(f, settings)
 		},
 	}
 
 	flags := cmd.Flags()
 
 	flags.StringSliceVar(
-		&options.Providers, "providers", []string{},
+		&settings.Providers, "providers", []string{},
 		"Providers to use, leave empty to use all available.",
 	)
-	flags.DurationVar(&options.Timeout, "timeout", 5*time.Second, "API timeout")
-	flags.StringVar(&options.CustomPrompt, "prompt", "", "Custom prompt template")
-	flags.BoolVar(&options.First, "first", false, "Use first received message and discard others")
-	flags.BoolVarP(&options.Auto, "auto", "a", false, "Auto-commit with first suggestion")
-	flags.BoolVar(&options.DryRun, "dry-run", false, "Show what would be committed without committing")
-	flags.StringSliceVar(&options.ExcludePatterns, "exclude", nil, "Exclude patterns (can be used multiple times)")
-	flags.StringSliceVar(&options.IncludePatterns, "include-only", nil, "Only include specific patterns")
-	flags.StringSliceVarP(&options.Modules, "modules", "m", nil, "Modules to enable")
-	flags.BoolVar(&options.MultiLine, "multi-line", false, "Use multi-line commit messages")
-	flags.BoolVarP(&options.Push, "push", "p", false, "Push after committing")
-	flags.StringVarP(&options.Tag, "tag", "t", "", "Create and increment semver tag (major|minor|patch)")
+	flags.DurationVar(&settings.Timeout, "timeout", 10*time.Second, "API timeout")
+	flags.StringVar(&settings.CustomPrompt, "prompt", "", "Custom prompt template")
+	flags.BoolVar(&settings.First, "first", false, "Use first received message and discard others")
+	flags.BoolVar(&settings.Auto, "auto", false, "Auto-commit with first suggestion")
+	flags.BoolVar(&settings.DryRun, "dry-run", false, "Show what would be committed without committing")
+	flags.StringSliceVar(&settings.ExcludePatterns, "exclude", nil, "Exclude patterns (can be used multiple times)")
+	flags.StringSliceVar(&settings.IncludePatterns, "include-only", nil, "Only include specific patterns")
+	flags.StringSliceVar(&settings.Modules, "modules", nil, "Modules to enable")
+	flags.BoolVar(&settings.MultiLine, "multi-line", false, "Use multi-line commit messages")
+	flags.BoolVar(&settings.Push, "push", false, "Push after committing")
+	flags.StringVar(&settings.Tag, "tag", "", "Create and increment semver tag (major|minor|patch)")
 
 	return cmd
 }
 
-func runCommitCommand(f *cmdutil.Factory, options *commit.Options) error {
-	options.Logger = slog.Default()
-	service, err := commit.NewCommitService(options, ".")
+func runCommitCommand(f *cmdutil.Factory, settings *commit.Settings) error {
+	service, err := commit.NewCommitService(
+		settings,
+		commit.WithLogger(slog.Default()),
+	)
 	if err != nil {
 		return fmt.Errorf("failed to initialize commit service: %w", err)
 	}

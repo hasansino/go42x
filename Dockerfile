@@ -54,7 +54,7 @@ RUN --mount=type=cache,target=/go/pkg/mod,id=gomodcache \
     --mount=type=cache,target=/root/.cache/go-build,id=gobuildcache \
     go build -v -trimpath -buildvcs=false \
     -ldflags "-s -w \
-      -X github.com/hasansino/go42x/internal/build.xBuildVersion=${RELEASE_TAG}" \
+    -X github.com/hasansino/go42x/internal/version.xBuildVersion=${RELEASE_TAG}" \
     -o go42x .
 
 # Validate binary.
