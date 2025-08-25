@@ -12,6 +12,13 @@ dist/
 build/
 !internal/build
 
-# claude
-.mcp.json
+# agentenv
+.agentenv/
 .claude/
+.mcp.json
+CLAUDE.md
+.gemini/
+GEMINI.md
+.crush.json
+CRUSH.md
+.github/copilot-instructions.md

@@ -6,11 +6,13 @@ import (
 )
 
 type Settings struct {
-	ConfigPath string
 	OutputPath string
 
 	AnalysisProvider string
+	AnalysisModel    string
 	AnalysisTimeout  time.Duration
+
+	GenerateClean bool
 }
 
 func (o *Settings) Validate() error {

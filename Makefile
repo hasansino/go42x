@@ -21,7 +21,7 @@ setup-release:
 # │               General workflow               │
 # ╰─────────────────────----------------─────────╯
 
-## test-unit | run unit tests
+## test | run unit tests
 # -count=1 is needed to prevent caching of test results.
 test:
 	@go test -count=1 -v -race $(shell go list ./... | grep -v './tests')
@@ -30,10 +30,6 @@ test:
 build:
 	@go build -gcflags="all=-N -l" -race -v -o ./build/go42x .
 	@file -h ./build/go42x && du -h ./build/go42x && sha256sum ./build/go42x && go tool buildid ./build/go42x
-
-## build-hooks | build agent hooks
-build-hooks:
-	@go build -gcflags="all=-N -l" -race -v -o ./.claude/hooks/claude_hook_voice ./agentenv/claude/hooks/voice/main.go
 
 ## image | build docker image
 # @see https://reproducible-builds.org/docs/source-date-epoch/

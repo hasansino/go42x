@@ -19,7 +19,6 @@ func NewAgentEnvCommand(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&settings.ConfigPath, "config", "c", ".", "path to config file")
 	cmd.Flags().StringVarP(&settings.OutputPath, "output", "o", ".", "path to output directory")
 
 	cmd.AddCommand(newInitCommand(f, settings))

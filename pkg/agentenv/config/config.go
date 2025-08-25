@@ -1,4 +1,4 @@
-package agentenv
+package config
 
 import (
 	"fmt"
@@ -21,14 +21,12 @@ type Config struct {
 }
 
 type Project struct {
-	Name        string   `yaml:"name"`
-	Language    string   `yaml:"language"`
-	Description string   `yaml:"description"`
-	Tags        []string `yaml:"tags"`
-	Metadata    Metadata `yaml:"metadata"`
+	Name        string            `yaml:"name"`
+	Language    string            `yaml:"language"`
+	Description string            `yaml:"description"`
+	Tags        []string          `yaml:"tags"`
+	Metadata    map[string]string `yaml:"metadata"`
 }
-
-type Metadata map[string]string
 
 type Provider struct {
 	Template  string   `yaml:"template"`

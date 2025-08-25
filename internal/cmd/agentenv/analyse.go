@@ -22,8 +22,12 @@ func newAnalyseCommand(f *cmdutil.Factory, settings *agentenv.Settings) *cobra.C
 	}
 
 	cmd.Flags().StringVar(
-		&settings.AnalysisProvider, "provider", "claude",
-		"provider to use (claude,gemini,crush",
+		&settings.AnalysisProvider, "provider", "",
+		"provider to use (claude,gemini)",
+	)
+	cmd.Flags().StringVar(
+		&settings.AnalysisModel, "model", "",
+		"model to use, must be compatible with the provider",
 	)
 	cmd.Flags().DurationVar(
 		&settings.AnalysisTimeout, "timeout", 5*time.Minute,

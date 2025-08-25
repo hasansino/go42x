@@ -12,33 +12,34 @@ project:
     repository: github.com/hasansino/go42
 
 providers:
-  # ----------------
-  #     Claude
-  # ----------------
+  # -------------------------
+  #          Claude
+  # -------------------------
   claude:
     template: claude.tpl.md
     output: CLAUDE.md
     chunks:
-      - chunks/10-personality.md
-      - chunks/20-operation.md
-      - chunks/30-conventions.md
-      - chunks/40-development.md
-      - chunks/50-security.md
-      - chunks/60-tooling.md
+      - chunks/10-personality.tpl.md
+      - chunks/20-operation.tpl.md
+      - chunks/30-conventions.tpl.md
+      - chunks/40-development.tpl.md
+      - chunks/50-security.tpl.md
+      - chunks/60-tooling.tpl.md
     modes:
-      - modes/10-noop.md
-      - modes/20-voice.md
-      - modes/30-default.md
-      - modes/40-cicd.md
+      - modes/10-default.tpl.md
+      - modes/20-noop.tpl.md
+      - modes/30-sbs.tpl.md
+      - modes/40-cicd.tpl.md
+      - modes/50-voice.tpl.md
     workflows:
-      - workflows/10-brainstorm.md
-      - workflows/20-planning.md
-      - workflows/30-implementation.md
-      - workflows/40-debugging.md
-      - workflows/50-investigation.md
-      - workflows/60-code-review.md
+      - workflows/10-brainstorm.tpl.md
+      - workflows/20-planning.tpl.md
+      - workflows/30-implementation.tpl.md
+      - workflows/40-debugging.tpl.md
+      - workflows/50-investigation.tpl.md
+      - workflows/60-code-review.tpl.md
     agents:
-      - manager
+      - claude/agents/manager.tpl.md
     hooks:
       - voice
     tools:
@@ -55,31 +56,32 @@ providers:
       - Write
       - Bash
 
-  # ----------------
-  #     Gemini
-  # ----------------
+  # -------------------------
+  #          Gemini
+  # -------------------------
   gemini:
     template: gemini.tpl.md
     output: GEMINI.md
     chunks:
-      - chunks/10-personality.md
-      - chunks/20-operation.md
-      - chunks/30-conventions.md
-      - chunks/40-development.md
-      - chunks/50-security.md
-      - chunks/60-tooling.md
+      - chunks/10-personality.tpl.md
+      - chunks/20-operation.tpl.md
+      - chunks/30-conventions.tpl.md
+      - chunks/40-development.tpl.md
+      - chunks/50-security.tpl.md
+      - chunks/60-tooling.tpl.md
     modes:
-      - modes/10-noop.md
-      - modes/20-voice.md
-      - modes/30-default.md
-      - modes/40-cicd.md
+      - modes/10-default.tpl.md
+      - modes/20-noop.tpl.md
+      - modes/30-sbs.tpl.md
+      - modes/40-cicd.tpl.md
+      - modes/50-voice.tpl.md
     workflows:
-      - workflows/10-brainstorm.md
-      - workflows/20-planning.md
-      - workflows/30-implementation.md
-      - workflows/40-debugging.md
-      - workflows/50-investigation.md
-      - workflows/60-code-review.md
+      - workflows/10-brainstorm.tpl.md
+      - workflows/20-planning.tpl.md
+      - workflows/30-implementation.tpl.md
+      - workflows/40-debugging.tpl.md
+      - workflows/50-investigation.tpl.md
+      - workflows/60-code-review.tpl.md
     tools:
       - LSTool
       - ReadFileTool
@@ -93,38 +95,81 @@ providers:
       - WebSearchTool
       - MemoryTool
 
-  # ----------------
-  #      Crush
-  # ----------------
+  # -------------------------
+  #           Crush
+  # -------------------------
   crush:
     template: crush.tpl.md
     output: CRUSH.md
     chunks:
-      - chunks/10-personality.md
-      - chunks/20-operation.md
-      - chunks/30-conventions.md
-      - chunks/40-development.md
-      - chunks/50-security.md
-      - chunks/60-tooling.md
+      - chunks/10-personality.tpl.md
+      - chunks/20-operation.tpl.md
+      - chunks/30-conventions.tpl.md
+      - chunks/40-development.tpl.md
+      - chunks/50-security.tpl.md
+      - chunks/60-tooling.tpl.md
     modes:
-      - modes/10-noop.md
-      - modes/20-voice.md
-      - modes/30-default.md
-      - modes/40-cicd.md
+      - modes/10-default.tpl.md
+      - modes/20-noop.tpl.md
+      - modes/30-sbs.tpl.md
+      - modes/40-cicd.tpl.md
+      - modes/50-voice.tpl.md
     workflows:
-      - workflows/10-brainstorm.md
-      - workflows/20-planning.md
-      - workflows/30-implementation.md
-      - workflows/40-debugging.md
-      - workflows/50-investigation.md
-      - workflows/60-code-review.md
+      - workflows/10-brainstorm.tpl.md
+      - workflows/20-planning.tpl.md
+      - workflows/30-implementation.tpl.md
+      - workflows/40-debugging.tpl.md
+      - workflows/50-investigation.tpl.md
+      - workflows/60-code-review.tpl.md
     tools:
       - view
       - ls
       - grep
       - edit
 
+  # -------------------------
+  #      Github Copilot
+  # -------------------------
+  copilot:
+    template: copilot.tpl.md
+    output: .github/copilot-instructions.md
+    chunks:
+      - chunks/10-personality.tpl.md
+      - chunks/20-operation.tpl.md
+      - chunks/30-conventions.tpl.md
+      - chunks/40-development.tpl.md
+      - chunks/50-security.tpl.md
+      - chunks/60-tooling.tpl.md
+    modes:
+      - modes/10-default.tpl.md
+      - modes/20-noop.tpl.md
+      - modes/30-sbs.tpl.md
+      - modes/40-cicd.tpl.md
+      - modes/50-voice.tpl.md
+    workflows:
+      - workflows/10-brainstorm.tpl.md
+      - workflows/20-planning.tpl.md
+      - workflows/30-implementation.tpl.md
+      - workflows/40-debugging.tpl.md
+      - workflows/50-investigation.tpl.md
+      - workflows/60-code-review.tpl.md
+
 mcp:
+  gopls:
+    enabled: true
+    type: stdio
+    name: gopls
+    command: gopls
+    args:
+      - mcp
+    tools:
+      - mcp__gopls__go_workspace
+      - mcp__gopls__go_search
+      - mcp__gopls__go_file_context
+      - mcp__gopls__go_package_api
+      - mcp__gopls__go_symbol_references
+      - mcp__gopls__go_diagnostics
+
   github:
     enabled: true
     type: stdio

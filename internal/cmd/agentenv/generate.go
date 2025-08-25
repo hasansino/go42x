@@ -19,6 +19,12 @@ func newGenerateCommand(f *cmdutil.Factory, settings *agentenv.Settings) *cobra.
 			return runGenerateCommand(f, settings)
 		},
 	}
+
+	cmd.Flags().BoolVar(
+		&settings.GenerateClean, "clean", false,
+		"delete existing configuration files before generating new ones",
+	)
+
 	return cmd
 }
 
