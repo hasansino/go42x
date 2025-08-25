@@ -12,7 +12,7 @@ import (
 
 func newInitCommand(f *cmdutil.Factory, settings *agentenv.Settings) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "agentenv",
+		Use:   "init",
 		Short: "Initialise ai agent configuration",
 		Long:  `Initialise ai agent configuration`,
 		RunE: func(cmd *cobra.Command, args []string) error {

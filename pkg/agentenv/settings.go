@@ -1,10 +1,16 @@
 package agentenv
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 type Settings struct {
 	ConfigPath string
 	OutputPath string
+
+	AnalysisProvider string
+	AnalysisTimeout  time.Duration
 }
 
 func (o *Settings) Validate() error {

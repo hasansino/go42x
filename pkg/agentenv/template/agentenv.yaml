@@ -12,12 +12,31 @@ project:
     repository: github.com/hasansino/go42
 
 providers:
+  # ----------------
+  #     Claude
+  # ----------------
   claude:
-    template: agentenv/claude.tpl.md
-    chunks: []
+    template: claude.tpl.md
+    output: CLAUDE.md
+    chunks:
+      - chunks/10-personality.md
+      - chunks/20-operation.md
+      - chunks/30-conventions.md
+      - chunks/40-development.md
+      - chunks/50-security.md
+      - chunks/60-tooling.md
     modes:
-      - agentenv/10-noop.md
-      - agentenv/20-voice.md
+      - modes/10-noop.md
+      - modes/20-voice.md
+      - modes/30-default.md
+      - modes/40-cicd.md
+    workflows:
+      - workflows/10-brainstorm.md
+      - workflows/20-planning.md
+      - workflows/30-implementation.md
+      - workflows/40-debugging.md
+      - workflows/50-investigation.md
+      - workflows/60-code-review.md
     agents:
       - manager
     hooks:
@@ -35,12 +54,32 @@ providers:
       - WebSearch
       - Write
       - Bash
+
+  # ----------------
+  #     Gemini
+  # ----------------
   gemini:
-    path: agentenv/gemini.tpl.md
-    chunks: []
+    template: gemini.tpl.md
+    output: GEMINI.md
+    chunks:
+      - chunks/10-personality.md
+      - chunks/20-operation.md
+      - chunks/30-conventions.md
+      - chunks/40-development.md
+      - chunks/50-security.md
+      - chunks/60-tooling.md
     modes:
-      - agentenv/10-noop.md
-      - agentenv/20-voice.md
+      - modes/10-noop.md
+      - modes/20-voice.md
+      - modes/30-default.md
+      - modes/40-cicd.md
+    workflows:
+      - workflows/10-brainstorm.md
+      - workflows/20-planning.md
+      - workflows/30-implementation.md
+      - workflows/40-debugging.md
+      - workflows/50-investigation.md
+      - workflows/60-code-review.md
     tools:
       - LSTool
       - ReadFileTool
@@ -53,12 +92,32 @@ providers:
       - WebFetchTool
       - WebSearchTool
       - MemoryTool
+
+  # ----------------
+  #      Crush
+  # ----------------
   crush:
-    path: agentenv/crush.tpl.md
-    chunks: []
+    template: crush.tpl.md
+    output: CRUSH.md
+    chunks:
+      - chunks/10-personality.md
+      - chunks/20-operation.md
+      - chunks/30-conventions.md
+      - chunks/40-development.md
+      - chunks/50-security.md
+      - chunks/60-tooling.md
     modes:
-      - agentenv/10-noop.md
-      - agentenv/20-voice.md
+      - modes/10-noop.md
+      - modes/20-voice.md
+      - modes/30-default.md
+      - modes/40-cicd.md
+    workflows:
+      - workflows/10-brainstorm.md
+      - workflows/20-planning.md
+      - workflows/30-implementation.md
+      - workflows/40-debugging.md
+      - workflows/50-investigation.md
+      - workflows/60-code-review.md
     tools:
       - view
       - ls
@@ -67,6 +126,8 @@ providers:
 
 mcp:
   github:
+    enabled: true
+    type: stdio
     name: github
     command: docker
     args:
@@ -165,7 +226,10 @@ mcp:
       - mcp__github__get_me
       - mcp__github__get_teams
       - mcp__github__get_team_members
+
   eleven-labs:
+    enabled: true
+    type: stdio
     name: eleven-labs
     command: uvx
     args:

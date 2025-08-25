@@ -24,6 +24,7 @@ func NewAgentEnvCommand(f *cmdutil.Factory) *cobra.Command {
 
 	cmd.AddCommand(newInitCommand(f, settings))
 	cmd.AddCommand(newGenerateCommand(f, settings))
+	cmd.AddCommand(newAnalyseCommand(f, settings))
 
 	return cmd
 }
