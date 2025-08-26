@@ -190,6 +190,9 @@ func (s *Service) Execute(ctx context.Context) error {
 		)
 	}
 
+	commitMessage = strings.Trim(commitMessage, "\n")
+	commitMessage = strings.TrimSpace(commitMessage)
+
 	if !s.settings.DryRun {
 		if err := s.gitOps.CreateCommit(commitMessage); err != nil {
 			s.logger.ErrorContext(ctx, "Failed to create commit", "error", err)

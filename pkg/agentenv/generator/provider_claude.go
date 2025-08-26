@@ -168,12 +168,10 @@ func (p *ClaudeProvider) copyAgents(providerConfig config.Provider, ctx *Context
 		return fmt.Errorf("failed to create agents directory: %w", err)
 	}
 
-	// Process each agent file as a template
 	for _, agentPath := range providerConfig.Agents {
-		// agentPath is like "claude/agents/manager.tpl.md"
 		// Extract just the filename without .tpl.md extension for the agent name
-		baseName := filepath.Base(agentPath)                 // "manager.tpl.md"
-		agentName := strings.TrimSuffix(baseName, ".tpl.md") // "manager"
+		baseName := filepath.Base(agentPath)
+		agentName := strings.TrimSuffix(baseName, ".tpl.md")
 
 		// Read the template file from templateDir
 		sourcePath := filepath.Join(p.templateDir, agentPath)
@@ -195,10 +193,8 @@ func (p *ClaudeProvider) copyAgents(providerConfig config.Provider, ctx *Context
 			return fmt.Errorf("failed to write agent %s: %w", agentName, err)
 		}
 
-		p.logger.Debug("Processed agent", "source", agentPath, "name", agentName, "dest", destPath)
+		p.logger.Info("Processed agent", "source", agentPath, "name", agentName, "dest", destPath)
 	}
-
-	p.logger.Info("Processed agents", "count", len(providerConfig.Agents))
 
 	return nil
 }

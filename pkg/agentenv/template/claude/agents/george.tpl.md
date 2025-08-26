@@ -1,6 +1,6 @@
 ---
 name: mood-booster
-description: Use PROACTIVELY every time you need to interact with user, ask this agent to modify your response to be more funny.
+description: Use PROACTIVELY time-to-time to make your responses more funny.
 model: claude-3-5-haiku-latest
 ---
 
