@@ -35,10 +35,18 @@ func NewGenerator(logger *slog.Logger, cfg *config.Config, templateDir, outputDi
 }
 
 func (g *Generator) registerProviders() {
-	g.providers[providerClaude] = NewClaudeProvider(g.config, g.logger, g.templateDir, g.outputDir)
-	g.providers[providerGemini] = NewGeminiProvider(g.config, g.logger, g.templateDir, g.outputDir)
-	g.providers[providerCrush] = NewCrushProvider(g.config, g.logger, g.templateDir, g.outputDir)
-	g.providers[providerCopilot] = NewCopilotProvider(g.config, g.logger, g.templateDir, g.outputDir)
+	g.providers[providerClaude] = NewClaudeProvider(
+		g.logger.With("provider", providerClaude),
+		g.config, g.templateDir, g.outputDir)
+	g.providers[providerGemini] = NewGeminiProvider(
+		g.logger.With("provider", providerGemini),
+		g.config, g.templateDir, g.outputDir)
+	g.providers[providerCrush] = NewCrushProvider(
+		g.logger.With("provider", providerCrush),
+		g.config, g.templateDir, g.outputDir)
+	g.providers[providerCopilot] = NewCopilotProvider(
+		g.logger.With("provider", providerCopilot),
+		g.config, g.templateDir, g.outputDir)
 }
 
 func (g *Generator) Generate(ctx context.Context) error {
@@ -50,8 +58,6 @@ func (g *Generator) Generate(ctx context.Context) error {
 	}
 
 	for name, providerConfig := range g.config.Providers {
-		g.logger.Info("Generating for provider", "provider", name)
-
 		provider, exists := g.providers[name]
 		if !exists {
 			g.logger.Warn("Unknown provider", "provider", name)
@@ -62,8 +68,6 @@ func (g *Generator) Generate(ctx context.Context) error {
 			g.logger.Error("Provider generation failed", "provider", name, "error", err)
 			continue
 		}
-
-		g.logger.Info("Provider generation completed", "provider", name)
 	}
 
 	return nil

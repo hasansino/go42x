@@ -26,7 +26,7 @@ type GeminiProvider struct {
 	*BaseProvider
 }
 
-func NewGeminiProvider(cfg *config.Config, logger *slog.Logger, templateDir, outputDir string) ProviderGenerator {
+func NewGeminiProvider(logger *slog.Logger, cfg *config.Config, templateDir, outputDir string) ProviderGenerator {
 	return &GeminiProvider{
 		BaseProvider: NewBaseProvider(logger, cfg, templateDir, outputDir),
 	}
@@ -114,7 +114,7 @@ func (p *GeminiProvider) generateConfigFiles(providerConfig config.Provider) err
 		return fmt.Errorf("failed to write %s: %w", settingsPath, err)
 	}
 
-	p.logger.Info("Generated Gemini config file", "settings", settingsPath)
+	p.logger.Info("Generated output", "file", settingsPath)
 
 	return nil
 }

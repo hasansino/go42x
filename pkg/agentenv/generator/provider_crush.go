@@ -19,7 +19,7 @@ type CrushProvider struct {
 	*BaseProvider
 }
 
-func NewCrushProvider(cfg *config.Config, logger *slog.Logger, templateDir, outputDir string) ProviderGenerator {
+func NewCrushProvider(logger *slog.Logger, cfg *config.Config, templateDir, outputDir string) ProviderGenerator {
 	return &CrushProvider{
 		BaseProvider: NewBaseProvider(logger, cfg, templateDir, outputDir),
 	}
@@ -101,7 +101,7 @@ func (p *CrushProvider) generateConfigFiles(providerConfig config.Provider) erro
 		return fmt.Errorf("failed to write %s: %w", crushPath, err)
 	}
 
-	p.logger.Info("Generated Crush config file", "config", crushPath)
+	p.logger.Info("Generated output", "file", crushPath)
 
 	return nil
 }

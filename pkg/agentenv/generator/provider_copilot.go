@@ -13,7 +13,7 @@ type CopilotProvider struct {
 	*BaseProvider
 }
 
-func NewCopilotProvider(cfg *config.Config, logger *slog.Logger, templateDir, outputDir string) ProviderGenerator {
+func NewCopilotProvider(logger *slog.Logger, cfg *config.Config, templateDir, outputDir string) ProviderGenerator {
 	return &CopilotProvider{
 		BaseProvider: NewBaseProvider(logger, cfg, templateDir, outputDir),
 	}

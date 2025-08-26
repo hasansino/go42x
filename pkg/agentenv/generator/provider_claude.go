@@ -22,7 +22,7 @@ type ClaudeProvider struct {
 	*BaseProvider
 }
 
-func NewClaudeProvider(cfg *config.Config, logger *slog.Logger, templateDir, outputDir string) ProviderGenerator {
+func NewClaudeProvider(logger *slog.Logger, cfg *config.Config, templateDir, outputDir string) ProviderGenerator {
 	return &ClaudeProvider{
 		BaseProvider: NewBaseProvider(logger, cfg, templateDir, outputDir),
 	}
@@ -106,6 +106,8 @@ func (p *ClaudeProvider) generateConfigFiles(providerConfig config.Provider) err
 		return fmt.Errorf("failed to write %s: %w", settingsPath, err)
 	}
 
+	p.logger.Info("Generated output", "file", settingsPath)
+
 	// Generate .mcp.json
 	mcpConfig := ClaudeMCPConfig{
 		MCPServers: mcpServers,
@@ -116,7 +118,7 @@ func (p *ClaudeProvider) generateConfigFiles(providerConfig config.Provider) err
 		return fmt.Errorf("failed to write %s: %w", mcpPath, err)
 	}
 
-	p.logger.Info("Generated Claude config files", "settings", settingsPath, "mcp", mcpPath)
+	p.logger.Info("Generated output", "file", mcpPath)
 
 	return nil
 }

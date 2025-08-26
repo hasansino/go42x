@@ -11,7 +11,10 @@ import (
 	"github.com/hasansino/go42x/pkg/agentenv/generator"
 )
 
-const agentEnvDir = ".agentenv"
+const (
+	agentEnvDir = ".agentenv"
+	configFile  = "agentenv.yaml"
+)
 
 type Service struct {
 	logger   *slog.Logger
@@ -42,7 +45,6 @@ func (s *Service) Init(_ context.Context) error {
 	s.logger.Info("Initializing agentenv")
 
 	targetDir := filepath.Join(s.settings.OutputPath, agentEnvDir)
-
 	if _, err := os.Stat(targetDir); err == nil {
 		s.logger.Info("Configuration already exists")
 		return nil
@@ -87,9 +89,13 @@ func (s *Service) Analyse(ctx context.Context) error {
 
 // Generate generates the agent environment configuration
 func (s *Service) Generate(ctx context.Context) error {
-	s.logger.Info("Generating agentenv", "output", s.settings.OutputPath)
+	absolutePath, err := filepath.Abs(s.settings.OutputPath)
+	if err != nil {
+		return fmt.Errorf("failed to get absolute path: %w", err)
+	}
+	s.logger.Info("Generating agentenv", "dir", absolutePath)
 
-	cfgPath := filepath.Join(s.settings.OutputPath, ".agentenv", "agentenv.yaml")
+	cfgPath := filepath.Join(s.settings.OutputPath, agentEnvDir, configFile)
 	cfg, err := config.LoadConfig(cfgPath)
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
@@ -103,7 +109,10 @@ func (s *Service) Generate(ctx context.Context) error {
 		}
 	}
 
-	gen := generator.NewGenerator(s.logger, cfg, templateDir, s.settings.OutputPath)
+	gen := generator.NewGenerator(
+		s.logger.With("component", "generator"),
+		cfg, templateDir, s.settings.OutputPath,
+	)
 
 	if err := gen.Generate(ctx); err != nil {
 		return fmt.Errorf("generation failed: %w", err)
