@@ -18,7 +18,6 @@ const (
 
 type ProviderGenerator interface {
 	Generate(ctx *Context, cfg config.Provider) error
-	ValidateTools(tools []string) error
 }
 
 type BaseProvider struct {
@@ -71,4 +70,3 @@ func (p *BaseProvider) writeOutput(path string, content string) error {
 
 	return nil
 }
-

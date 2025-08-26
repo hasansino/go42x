@@ -1,24 +1,24 @@
-# Project: {{ .project.Name }}
+# Project: {{ .project.name }}
 
 <context>
-  <language>{{ .project.Language }}</language>
-  {{ if gt (len .project.Tags) 0 -}}
+  <language>{{ .project.language }}</language>
+  {{ if gt (len .project.tags) 0 -}}
   <tags>
-    {{- range .project.Tags }}
+    {{- range .project.tags }}
     - {{ . }}
     {{- end }}
   </tags>
   {{- end }}
-  {{ if gt (len .project.Metadata) 0 -}}
+  {{ if gt (len .project.metadata) 0 -}}
   <metadata>
-    {{- range $key, $value := .project.Metadata }}
+    {{- range $key, $value := .project.metadata }}
     <{{ $key }}>{{ $value }}</{{ $key }}>
     {{- end }}
   </metadata>
   {{- end }}
 </context>
 
-{{ .project.Description }}
+{{ .project.description }}
 
 ## Instructions
 
@@ -33,5 +33,5 @@
 {{ .workflows }}
 
 {{ if gt (len .analysis) 0 -}}
-{{ .analysis }}
+{{ .analysis.content }}
 {{ end -}}

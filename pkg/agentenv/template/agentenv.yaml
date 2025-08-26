@@ -3,11 +3,13 @@
 version: 1.0
 
 project:
-  name: go42
+  name: go42x
   language: go
-  description: 'loriem ipsum dolor sit amet'
+  description: 'Helper tool for go42 project.'
   tags:
-    - dummy-tag
+    - go42
+    - golang
+    - cli
   metadata:
     repository: github.com/hasansino/go42
 
