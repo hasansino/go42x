@@ -16,6 +16,7 @@ const (
 type Config struct {
 	Version   string               `yaml:"version"`
 	Project   Project              `yaml:"project"`
+	EnvVars   []string             `yaml:"env"`
 	Providers map[string]Provider  `yaml:"providers"`
 	MCP       map[string]MCPServer `yaml:"mcp"`
 }

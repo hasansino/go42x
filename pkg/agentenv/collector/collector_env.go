@@ -11,14 +11,16 @@ import (
 // EnvironmentCollector collects runtime environment information
 type EnvironmentCollector struct {
 	BaseCollector
+	envVars []string
 }
 
-func NewEnvironmentCollector() *EnvironmentCollector {
+func NewEnvironmentCollector(envVars []string) *EnvironmentCollector {
 	return &EnvironmentCollector{
 		BaseCollector: NewBaseCollector(
 			"environment",
 			20,
 		),
+		envVars: envVars,
 	}
 }
 
@@ -43,6 +45,15 @@ func (c *EnvironmentCollector) Collect(_ context.Context) (map[string]interface{
 	if u, err := user.Current(); err == nil {
 		result["user"] = u.Username
 		result["user_home"] = u.HomeDir
+	}
+
+	// collect user provided environment variables
+	if len(c.envVars) > 0 {
+		for _, key := range c.envVars {
+			if value := os.Getenv(key); value != "" {
+				result[key] = value
+			}
+		}
 	}
 
 	return result, nil

@@ -13,6 +13,9 @@ project:
   metadata:
     repository: github.com/hasansino/go42
 
+env:
+  - PATH
+
 providers:
   # -------------------------
   #          Claude

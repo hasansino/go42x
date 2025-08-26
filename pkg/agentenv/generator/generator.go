@@ -79,7 +79,7 @@ func (g *Generator) buildTemplateContext(ctx context.Context) (*Context, error) 
 	manager.RegisterCollectors(
 		collector.NewGitCollector(),
 		collector.NewProjectCollector(g.config),
-		collector.NewEnvironmentCollector(),
+		collector.NewEnvironmentCollector(g.config.EnvVars),
 		collector.NewGitHubActionsCollector(),
 		collector.NewAnalysisCollector(g.templateDir),
 	)
