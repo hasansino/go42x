@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/hasansino/go42x/internal/cmd/agentenv"
+	"github.com/hasansino/go42x/internal/cmd/kwb"
 	"github.com/hasansino/go42x/internal/cmd/tool"
 	"github.com/hasansino/go42x/internal/cmdutil"
 )
@@ -46,6 +47,7 @@ func NewGo42Command(ctx context.Context, f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(NewVersionCommand())
 	cmd.AddCommand(agentenv.NewAgentEnvCommand(f))
 	cmd.AddCommand(tool.NewToolsCommand(f))
+	cmd.AddCommand(kwb.NewKnowledgeBaseCommand(f))
 
 	return cmd
 }

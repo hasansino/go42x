@@ -17,7 +17,7 @@ type Settings struct {
 
 func (o *Settings) Validate() error {
 	if o == nil {
-		return fmt.Errorf("options cannot be nil")
+		return fmt.Errorf("settings cannot be nil")
 	}
 	return nil
 }

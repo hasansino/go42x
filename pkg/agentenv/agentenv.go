@@ -135,6 +135,7 @@ var ignoreFiles = []string{
 	"CLAUDE.md",
 	".gemini/",
 	"GEMINI.md",
+	".crush/",
 	".crush.json",
 	"CRUSH.md",
 	".github/copilot-instructions.md",
