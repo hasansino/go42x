@@ -26,9 +26,17 @@
 
 ## Operational Modes
 
+User can specify the operational mode by saying "Switch to [mode name] mode".
+
+You are allowed to operate only in one of the following modes at any given time:
+
 {{ .modes }}
 
 ## Workflows
+
+User can specify the workflow by saying "Use [workflow name] workflow".
+
+You are allowed to execute only one of the following workflows at any given time:
 
 {{ .workflows }}
 

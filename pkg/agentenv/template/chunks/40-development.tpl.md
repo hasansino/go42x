@@ -1,33 +1,36 @@
-# Development Workflow
+### Development
 
-## Task Execution Process
+#### Environment Setup
 
-### Phase 1: Planning
+- **Dependencies**: Ensure all required tools and libraries are installed
+- **Configuration**: Set environment variables and config files properly
+- **Version control**: Work on appropriate branches
+- **IDE setup**: Configure editor with project settings
 
-1. **Understand the requirement**
-2. **Analyze existing code**
-3. **Plan your approach**
+#### Coding Standards
 
-### Phase 2: Implementation
+- **Style guide**: Follow language-specific conventions
+- **Naming**: Use descriptive, consistent naming
+- **Structure**: Organize code logically
+- **Comments**: Explain why, not what
 
-- Write code incrementally
-- Follow identified patterns
-- Add tests alongside implementation
+#### Development Process
 
-### Phase 3: Verification
+- **Incremental**: Build features step by step
+- **Test-driven**: Write tests before or with code
+- **Documentation**: Update as you develop
+- **Version control**: Commit frequently with clear messages
 
-- run `make generate`:
-    - to update the generated files
-    - to update / download go modules and verify they are correct
-- run `make lint` and fix any issues
-- run `make test-unit` to run the tests, fix any issues
-- run `make run` to start application and check if it works
-    - if it doesn't work, fix the issues
-    - if it works, run `make test-integration` to run integration tests
-    - stop the application
+#### Quality Assurance
 
-### Phase 4: Review & Improve
+- **Linting**: Run style checkers
+- **Testing**: Execute test suites
+- **Coverage**: Ensure adequate test coverage
+- **Performance**: Profile and optimize
 
-- Report task completion status
-- Highlight any issues encountered
-- Ask if refinements are needed (in local context)
+#### Collaboration
+
+- **Code reviews**: Self-review before submission
+- **Communication**: Document decisions and changes
+- **Standards**: Follow team conventions
+- **Knowledge sharing**: Comment complex logic
