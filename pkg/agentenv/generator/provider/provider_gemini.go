@@ -45,8 +45,8 @@ type GeminiCheckpointing struct {
 type GeminiMCPServerConfig struct {
 	URL     string            `json:"url,omitempty"`     // for sse
 	HttpUrl string            `json:"httpUrl,omitempty"` // http streaming endpoint url
-	Command string            `json:"command"`           //
-	Args    []string          `json:"args"`              //
+	Command string            `json:"command,omitempty"` //
+	Args    []string          `json:"args,omitempty"`    //
 	Env     map[string]string `json:"env,omitempty"`     // $VAR_NAME or ${VAR_NAME} syntax
 	CWD     string            `json:"cwd,omitempty"`     // current working directory
 	Timeout int               `json:"timeout,omitempty"` //
@@ -172,6 +172,9 @@ func (p *GeminiProvider) extractMCPServers(allTools *[]string) ([]string, map[st
 				Env:     server.Env,
 				Timeout: mcpDefaultTimeout,
 				Trust:   mcpDefaultTrust,
+				URL:     server.URL,
+				Headers: server.Headers,
+				CWD:     server.CWD,
 			}
 		}
 	}

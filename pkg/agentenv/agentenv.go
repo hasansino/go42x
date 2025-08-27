@@ -139,6 +139,7 @@ var ignoreFiles = []string{
 	".crush.json",
 	"CRUSH.md",
 	".github/copilot-instructions.md",
+	".github/.copilot.mcp.json",
 }
 
 func updateGitIgnore(outputPath string) error {

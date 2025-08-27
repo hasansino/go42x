@@ -278,6 +278,33 @@ mcp:
       - mcp__github__get_teams
       - mcp__github__get_team_members
 
+  gitlab:
+    enabled: true
+    type: stdio
+    name: gitlab
+    command: docker
+    args:
+      - run
+      - -i
+      - --rm
+      - -e
+      - GITLAB_PERSONAL_ACCESS_TOKEN
+      - -e
+      - GITLAB_API_URL
+      - -e
+      - GITLAB_READ_ONLY_MODE
+      - -e
+      - USE_GITLAB_WIKI
+      - -e
+      - USE_MILESTONE
+      - -e
+      - USE_PIPELINE
+      - iwakitakuma/gitlab-mcp
+    env:
+      GITLAB_PERSONAL_ACCESS_TOKEN: "$GITLAB_PERSONAL_ACCESS_TOKEN"
+      GITLAB_API_URL: https://gitlab.com/api/v4
+      USE_PIPELINE: true
+
   eleven-labs:
     enabled: true
     type: stdio
@@ -296,3 +323,23 @@ mcp:
       - mcp__eleven_labs__get_voice
       - mcp__eleven_labs__text_to_voice
       - mcp__eleven_labs__play_audio
+
+  jira:
+    enabled: true
+    type: sse
+    name: jira
+    url: https://mcp.atlassian.com/v1/sse
+    tools:
+      - mcp__jira__create_issue
+      - mcp__jira__update_issue
+      - mcp__jira__get_issue
+      - mcp__jira__get_issue_comments
+      - mcp__jira__add_issue_comment
+      - mcp__jira__list_issues
+      - mcp__jira__search_issues
+      - mcp__jira__list_issue_types
+      - mcp__jira__add_sub_issue
+      - mcp__jira__remove_sub_issue
+      - mcp__jira__reprioritize_sub_issue
+      - mcp__jira__list_sub_issues
+      - mcp__jira__assign_copilot_to_issue

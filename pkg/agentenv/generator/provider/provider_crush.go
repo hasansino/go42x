@@ -33,8 +33,8 @@ type LSPConfig struct {
 type CrushMCPConfig struct {
 	Type    string            `json:"type"`              // stdio, http, sse
 	URL     string            `json:"url,omitempty"`     // for sse and http
-	Command string            `json:"command"`           //
-	Args    []string          `json:"args"`              //
+	Command string            `json:"command,omitempty"` //
+	Args    []string          `json:"args,omitempty"`    //
 	Env     map[string]string `json:"env,omitempty"`     //
 	Headers map[string]string `json:"headers,omitempty"` // when using sse and http
 }
@@ -153,6 +153,8 @@ func (p *CrushProvider) extractMCPServers(allTools *[]string) map[string]CrushMC
 				Command: server.Command,
 				Args:    server.Args,
 				Env:     server.Env,
+				URL:     server.URL,
+				Headers: server.Headers,
 			}
 		}
 	}

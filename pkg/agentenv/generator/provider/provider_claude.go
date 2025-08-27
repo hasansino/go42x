@@ -36,10 +36,10 @@ type ClaudeMCPConfig struct {
 
 // @see https://docs.anthropic.com/en/docs/claude-code/mcp
 type ClaudeMCPServer struct {
-	Command string            `json:"command"`           //
+	Command string            `json:"command,omitempty"` //
 	URL     string            `json:"url,omitempty"`     // for sse
-	Type    string            `json:"type,omitempty"`    // sse / http
-	Args    []string          `json:"args"`              //
+	Type    string            `json:"type"`              // sse / http
+	Args    []string          `json:"args,omitempty"`    //
 	Env     map[string]string `json:"env,omitempty"`     //
 	Headers map[string]string `json:"headers,omitempty"` // Authorization: Bearer ...
 }
@@ -168,6 +168,9 @@ func (p *ClaudeProvider) extractMCPServers(allTools *[]string) ([]string, map[st
 				Command: server.Command,
 				Args:    server.Args,
 				Env:     server.Env,
+				Type:    server.Type,
+				URL:     server.URL,
+				Headers: server.Headers,
 			}
 		}
 	}

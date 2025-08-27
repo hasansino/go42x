@@ -1,6 +1,6 @@
-# Project Conventions
+## Conventions
 
-## Overview
+### Overview
 
 **IMPORTANT:** These conventions are mandatory unless explicitly overridden.
 
@@ -24,3 +24,9 @@ If you need to violate a convention:
 2. Language idioms and best practices
 3. Team preferences (when explicitly stated)
 4. General clean code principles
+
+### CONVENTIONS.md content
+
+{{ if gt (len .conventions.content) 0 -}}
+{{ .conventions.content }}
+{{ end -}}

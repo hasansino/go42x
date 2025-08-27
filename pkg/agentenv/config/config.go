@@ -50,6 +50,7 @@ type MCPServer struct {
 	Env     map[string]string `yaml:"env"`
 	Tools   []string          `yaml:"tools"`
 	Headers map[string]string `yaml:"headers"`
+	CWD     string            `yaml:"cwd"`
 }
 
 func LoadConfig(path string) (*Config, error) {
@@ -99,9 +100,6 @@ func (c *Config) Validate() error {
 	for name, server := range c.MCP {
 		if server.Name == "" {
 			return fmt.Errorf("MCP server %s: name is required", name)
-		}
-		if server.Command == "" {
-			return fmt.Errorf("MCP server %s: command is required", name)
 		}
 		if server.Type != "" {
 			switch server.Type {
