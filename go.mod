@@ -21,13 +21,24 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
+replace (
+	// Force latest stable version of deprecated protobuf to avoid old versions
+	github.com/golang/protobuf v1.3.2 => github.com/golang/protobuf v1.5.4
+	github.com/golang/protobuf v1.4.0 => github.com/golang/protobuf v1.5.4
+	github.com/golang/protobuf v1.4.1 => github.com/golang/protobuf v1.5.4
+	github.com/golang/protobuf v1.4.2 => github.com/golang/protobuf v1.5.4
+	github.com/golang/protobuf v1.4.3 => github.com/golang/protobuf v1.5.4
+	github.com/golang/protobuf v1.5.0 => github.com/golang/protobuf v1.5.4
+	// Eliminate old protobuf versions that cause circular dependencies
+	google.golang.org/protobuf v1.33.0 => google.golang.org/protobuf v1.34.2
+)
+
 require (
 	cloud.google.com/go v0.116.0 // indirect
 	cloud.google.com/go/auth v0.9.3 // indirect
 	cloud.google.com/go/compute/metadata v0.5.0 // indirect
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
-	github.com/RoaringBitmap/roaring v1.9.3 // indirect
 	github.com/RoaringBitmap/roaring/v2 v2.4.5 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
@@ -59,7 +70,6 @@ require (
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.6.2 // indirect
-	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
