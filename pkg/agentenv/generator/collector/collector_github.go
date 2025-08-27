@@ -8,6 +8,8 @@ import (
 	"strconv"
 )
 
+const GitHubActionsCollectorName = "github_actions"
+
 // GitHubActionsCollector collects GitHub Actions workflow context
 type GitHubActionsCollector struct {
 	BaseCollector
@@ -15,14 +17,11 @@ type GitHubActionsCollector struct {
 
 func NewGitHubActionsCollector() *GitHubActionsCollector {
 	return &GitHubActionsCollector{
-		BaseCollector: NewBaseCollector(
-			"github_actions",
-			30,
-		),
+		BaseCollector: NewBaseCollector(GitHubActionsCollectorName, 30),
 	}
 }
 
-func (c *GitHubActionsCollector) Collect(ctx context.Context) (map[string]interface{}, error) {
+func (c *GitHubActionsCollector) Collect(_ context.Context) (map[string]interface{}, error) {
 	result := make(map[string]interface{})
 
 	if os.Getenv("GITHUB_ACTIONS") != "true" {

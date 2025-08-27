@@ -4,15 +4,17 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sort"
 
-	"github.com/hasansino/go42x/pkg/agentenv/collector"
 	"github.com/hasansino/go42x/pkg/agentenv/config"
+	"github.com/hasansino/go42x/pkg/agentenv/generator/collector"
+	"github.com/hasansino/go42x/pkg/agentenv/generator/provider"
 )
 
 type Generator struct {
 	logger      *slog.Logger
 	config      *config.Config
-	providers   map[string]ProviderGenerator
+	providers   map[string]ProviderAccessor
 	templateDir string
 	outputDir   string
 }
@@ -21,7 +23,7 @@ func NewGenerator(logger *slog.Logger, cfg *config.Config, templateDir, outputDi
 	g := &Generator{
 		logger:      logger,
 		config:      cfg,
-		providers:   make(map[string]ProviderGenerator),
+		providers:   make(map[string]ProviderAccessor),
 		templateDir: templateDir,
 		outputDir:   outputDir,
 	}
@@ -32,18 +34,23 @@ func NewGenerator(logger *slog.Logger, cfg *config.Config, templateDir, outputDi
 }
 
 func (g *Generator) registerProviders() {
-	g.providers[providerClaude] = NewClaudeProvider(
-		g.logger.With("provider", providerClaude),
-		g.config, g.templateDir, g.outputDir)
-	g.providers[providerGemini] = NewGeminiProvider(
-		g.logger.With("provider", providerGemini),
-		g.config, g.templateDir, g.outputDir)
-	g.providers[providerCrush] = NewCrushProvider(
-		g.logger.With("provider", providerCrush),
-		g.config, g.templateDir, g.outputDir)
-	g.providers[providerCopilot] = NewCopilotProvider(
-		g.logger.With("provider", providerCopilot),
-		g.config, g.templateDir, g.outputDir)
+	templateEngine := newTemplateEngine(g.templateDir)
+
+	g.providers[provider.Claude] = provider.NewClaudeProvider(
+		g.logger.With("provider", provider.Claude),
+		g.config, templateEngine, g.templateDir, g.outputDir)
+
+	g.providers[provider.Gemini] = provider.NewGeminiProvider(
+		g.logger.With("provider", provider.Gemini),
+		g.config, templateEngine, g.templateDir, g.outputDir)
+
+	g.providers[provider.Crush] = provider.NewCrushProvider(
+		g.logger.With("provider", provider.Crush),
+		g.config, templateEngine, g.templateDir, g.outputDir)
+
+	g.providers[provider.Copilot] = provider.NewCopilotProvider(
+		g.logger.With("provider", provider.Copilot),
+		g.config, templateEngine, g.templateDir, g.outputDir)
 }
 
 func (g *Generator) Generate(ctx context.Context) error {
@@ -55,13 +62,12 @@ func (g *Generator) Generate(ctx context.Context) error {
 	}
 
 	for name, providerConfig := range g.config.Providers {
-		provider, exists := g.providers[name]
+		p, exists := g.providers[name]
 		if !exists {
 			g.logger.Warn("Unknown provider", "provider", name)
 			continue
 		}
-
-		if err := provider.Generate(tplCtx, providerConfig); err != nil {
+		if err := p.Generate(tplCtx.ToMap(), providerConfig); err != nil {
 			g.logger.Error("Provider generation failed", "provider", name, "error", err)
 			continue
 		}
@@ -72,21 +78,33 @@ func (g *Generator) Generate(ctx context.Context) error {
 
 func (g *Generator) buildTemplateContext(ctx context.Context) (*Context, error) {
 	var (
-		tplCtx  = newContext(ctx)
-		manager = collector.NewManager()
+		tplCtx = newContext(ctx)
 	)
 
-	manager.RegisterCollectors(
+	collectors := []CollectorAccessor{
 		collector.NewGitCollector(),
 		collector.NewProjectCollector(g.config),
 		collector.NewEnvironmentCollector(g.config.EnvVars),
 		collector.NewGitHubActionsCollector(),
 		collector.NewAnalysisCollector(g.templateDir),
-	)
+		collector.NewConventionsCollector(g.outputDir),
+	}
 
-	collected, err := manager.Collect(ctx)
-	if err != nil {
-		g.logger.Warn("Context collection had errors", "error", err)
+	sort.Slice(collectors, func(i, j int) bool {
+		return collectors[i].Priority() < collectors[j].Priority()
+	})
+
+	collected := make(map[string]interface{})
+
+	for _, c := range collectors {
+		data, err := c.Collect(ctx)
+		if err != nil {
+			g.logger.Error("Collector failed", "collector", c.Name(), "error", err)
+			continue
+		}
+		if len(data) > 0 {
+			collected[c.Name()] = data
+		}
 	}
 
 	for k, v := range collected {

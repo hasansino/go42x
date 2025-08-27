@@ -4,12 +4,6 @@ import (
 	"context"
 )
 
-type Collector interface {
-	Name() string
-	Priority() int
-	Collect(ctx context.Context) (map[string]interface{}, error)
-}
-
 type BaseCollector struct {
 	name     string
 	priority int

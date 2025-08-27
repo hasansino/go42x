@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+const GitCollectorName = "git"
+
 // GitCollector collects Git repository information
 type GitCollector struct {
 	BaseCollector
@@ -13,10 +15,7 @@ type GitCollector struct {
 
 func NewGitCollector() *GitCollector {
 	return &GitCollector{
-		BaseCollector: NewBaseCollector(
-			"git",
-			10,
-		),
+		BaseCollector: NewBaseCollector(GitCollectorName, 10),
 	}
 }
 

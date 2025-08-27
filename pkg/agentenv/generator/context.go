@@ -4,18 +4,6 @@ import (
 	"context"
 )
 
-const (
-	ContextKeyProject   = "project"
-	ContextKeyVersion   = "version"
-	ContextKeyAnalysis  = "analysis"
-	ContextKeyChunks    = "chunks"
-	ContextKeyModes     = "modes"
-	ContextKeyWorkflows = "workflows"
-	ContextKeyGitBranch = "git_branch"
-	ContextKeyGitCommit = "git_commit"
-	ContextKeyGitRemote = "git_remote"
-)
-
 type Context struct {
 	ctx  context.Context
 	data map[string]interface{}

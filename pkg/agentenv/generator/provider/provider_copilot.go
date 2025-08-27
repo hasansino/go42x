@@ -1,25 +1,31 @@
-package generator
+package provider
 
 import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
-	"strings"
 
 	"github.com/hasansino/go42x/pkg/agentenv/config"
 )
+
+const Copilot = "copilot"
 
 type CopilotProvider struct {
 	*BaseProvider
 }
 
-func NewCopilotProvider(logger *slog.Logger, cfg *config.Config, templateDir, outputDir string) ProviderGenerator {
+func NewCopilotProvider(
+	logger *slog.Logger,
+	cfg *config.Config,
+	templateEngine TemplateEngineAccessor,
+	templateDir, outputDir string,
+) *CopilotProvider {
 	return &CopilotProvider{
-		BaseProvider: NewBaseProvider(logger, cfg, templateDir, outputDir),
+		BaseProvider: NewBaseProvider(logger, cfg, templateEngine, templateDir, outputDir),
 	}
 }
 
-func (p *CopilotProvider) Generate(ctx *Context, providerConfig config.Provider) error {
+func (p *CopilotProvider) Generate(ctxData map[string]interface{}, providerConfig config.Provider) error {
 	templateContent, err := p.loadTemplate(providerConfig.Template)
 	if err != nil {
 		return fmt.Errorf("failed to load template: %w", err)
@@ -31,9 +37,8 @@ func (p *CopilotProvider) Generate(ctx *Context, providerConfig config.Provider)
 			return fmt.Errorf("failed to load chunks: %w", err)
 		}
 
-		mergedChunks := p.templateEngine.MergeStrings(chunkContents)
-		ctx.Set(ContextKeyChunks, mergedChunks)
-		templateContent = strings.Replace(templateContent, chunksPlaceholder, mergedChunks, 1)
+		mergedChunks := p.mergeStrings(chunkContents)
+		templateContent = p.templateEngine.InjectChunks(templateContent, mergedChunks)
 	}
 
 	if len(providerConfig.Modes) > 0 {
@@ -42,9 +47,8 @@ func (p *CopilotProvider) Generate(ctx *Context, providerConfig config.Provider)
 			return fmt.Errorf("failed to load modes: %w", err)
 		}
 
-		mergedModes := p.templateEngine.MergeStrings(modeContents)
-		ctx.Set(ContextKeyModes, mergedModes)
-		templateContent = strings.Replace(templateContent, modesPlaceholder, mergedModes, 1)
+		mergedModes := p.mergeStrings(modeContents)
+		templateContent = p.templateEngine.InjectModes(templateContent, mergedModes)
 	}
 
 	if len(providerConfig.Workflows) > 0 {
@@ -53,12 +57,11 @@ func (p *CopilotProvider) Generate(ctx *Context, providerConfig config.Provider)
 			return fmt.Errorf("failed to load workflows: %w", err)
 		}
 
-		mergedWorkflows := p.templateEngine.MergeStrings(workflowContents)
-		ctx.Set(ContextKeyWorkflows, mergedWorkflows)
-		templateContent = strings.Replace(templateContent, workflowsPlaceholder, mergedWorkflows, 1)
+		mergedWorkflows := p.mergeStrings(workflowContents)
+		templateContent = p.templateEngine.InjectWorkflows(templateContent, mergedWorkflows)
 	}
 
-	output, err := p.templateEngine.Process(templateContent, ctx)
+	output, err := p.templateEngine.Process(templateContent, ctxData)
 	if err != nil {
 		return fmt.Errorf("failed to process template: %w", err)
 	}

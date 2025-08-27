@@ -1,40 +1,35 @@
-package generator
+package provider
 
 import (
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/hasansino/go42x/pkg/agentenv/config"
 )
-
-const (
-	providerClaude  = "claude"
-	providerGemini  = "gemini"
-	providerCrush   = "crush"
-	providerCopilot = "copilot"
-)
-
-type ProviderGenerator interface {
-	Generate(ctx *Context, cfg config.Provider) error
-}
 
 type BaseProvider struct {
 	config         *config.Config
 	logger         *slog.Logger
 	templateDir    string
 	outputDir      string
-	templateEngine *TemplateEngine
+	templateEngine TemplateEngineAccessor
 }
 
-func NewBaseProvider(logger *slog.Logger, cfg *config.Config, templateDir, outputDir string) *BaseProvider {
+func NewBaseProvider(
+	logger *slog.Logger,
+	cfg *config.Config,
+	templateEngine TemplateEngineAccessor,
+	templateDir, outputDir string,
+) *BaseProvider {
 	return &BaseProvider{
 		config:         cfg,
 		logger:         logger,
 		templateDir:    templateDir,
 		outputDir:      outputDir,
-		templateEngine: newTemplateEngine(templateDir),
+		templateEngine: templateEngine,
 	}
 }
 
@@ -63,10 +58,19 @@ func (p *BaseProvider) writeOutput(path string, content string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
-
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 		return fmt.Errorf("failed to write output: %w", err)
 	}
-
 	return nil
+}
+
+func (p *BaseProvider) mergeStrings(items []string) string {
+	var result strings.Builder
+	for i, item := range items {
+		if i > 0 {
+			result.WriteString("\n\n")
+		}
+		result.WriteString(strings.TrimSpace(item))
+	}
+	return result.String()
 }

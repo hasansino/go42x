@@ -21,18 +21,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-replace (
-	// Force latest stable version of deprecated protobuf to avoid old versions
-	github.com/golang/protobuf v1.3.2 => github.com/golang/protobuf v1.5.4
-	github.com/golang/protobuf v1.4.0 => github.com/golang/protobuf v1.5.4
-	github.com/golang/protobuf v1.4.1 => github.com/golang/protobuf v1.5.4
-	github.com/golang/protobuf v1.4.2 => github.com/golang/protobuf v1.5.4
-	github.com/golang/protobuf v1.4.3 => github.com/golang/protobuf v1.5.4
-	github.com/golang/protobuf v1.5.0 => github.com/golang/protobuf v1.5.4
-	// Eliminate old protobuf versions that cause circular dependencies
-	google.golang.org/protobuf v1.33.0 => google.golang.org/protobuf v1.34.2
-)
-
 require (
 	cloud.google.com/go v0.116.0 // indirect
 	cloud.google.com/go/auth v0.9.3 // indirect
@@ -80,12 +68,14 @@ require (
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
-	github.com/json-iterator/go v0.0.0-20171115153421-f7279a603ede // indirect
+	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421 // indirect
+	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mschoch/smat v0.2.0 // indirect
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect

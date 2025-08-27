@@ -1,4 +1,4 @@
-package generator
+package provider
 
 import (
 	"encoding/json"
@@ -11,6 +11,8 @@ import (
 	"github.com/hasansino/go42x/pkg/agentenv/config"
 )
 
+const Claude = "claude"
+
 const (
 	claudeSettingsDir  = ".claude"
 	claudeSettingsFile = "settings.json"
@@ -18,17 +20,46 @@ const (
 	claudeAgentsDir    = "agents"
 )
 
+// ClaudeSettings represents .claude/settings.json structure
+type ClaudeSettings struct {
+	Permissions struct {
+		Allow []string `json:"allow"`
+		Deny  []string `json:"deny"`
+	} `json:"permissions"`
+	EnabledMCPServers []string `json:"enabledMcpjsonServers"`
+}
+
+// ClaudeMCPConfig represents .mcp.json structure
+type ClaudeMCPConfig struct {
+	MCPServers map[string]ClaudeMCPServerConfig `json:"mcpServers"`
+}
+
+// @see https://docs.anthropic.com/en/docs/claude-code/mcp
+type ClaudeMCPServerConfig struct {
+	Command string            `json:"command"`           //
+	URL     string            `json:"url,omitempty"`     // for sse
+	Type    string            `json:"type,omitempty"`    // sse / http
+	Args    []string          `json:"args"`              //
+	Env     map[string]string `json:"env,omitempty"`     //
+	Headers map[string]string `json:"headers,omitempty"` // Authorization: Bearer ...
+}
+
 type ClaudeProvider struct {
 	*BaseProvider
 }
 
-func NewClaudeProvider(logger *slog.Logger, cfg *config.Config, templateDir, outputDir string) ProviderGenerator {
+func NewClaudeProvider(
+	logger *slog.Logger,
+	cfg *config.Config,
+	templateEngine TemplateEngineAccessor,
+	templateDir, outputDir string,
+) *ClaudeProvider {
 	return &ClaudeProvider{
-		BaseProvider: NewBaseProvider(logger, cfg, templateDir, outputDir),
+		BaseProvider: NewBaseProvider(logger, cfg, templateEngine, templateDir, outputDir),
 	}
 }
 
-func (p *ClaudeProvider) Generate(ctx *Context, providerConfig config.Provider) error {
+func (p *ClaudeProvider) Generate(ctxData map[string]interface{}, providerConfig config.Provider) error {
 	templateContent, err := p.loadTemplate(providerConfig.Template)
 	if err != nil {
 		return fmt.Errorf("failed to load template: %w", err)
@@ -40,9 +71,8 @@ func (p *ClaudeProvider) Generate(ctx *Context, providerConfig config.Provider) 
 			return fmt.Errorf("failed to load chunks: %w", err)
 		}
 
-		mergedChunks := p.templateEngine.MergeStrings(chunkContents)
-		ctx.Set(ContextKeyChunks, mergedChunks)
-		templateContent = strings.Replace(templateContent, chunksPlaceholder, mergedChunks, 1)
+		mergedChunks := p.mergeStrings(chunkContents)
+		templateContent = p.templateEngine.InjectChunks(templateContent, mergedChunks)
 	}
 
 	if len(providerConfig.Modes) > 0 {
@@ -51,9 +81,8 @@ func (p *ClaudeProvider) Generate(ctx *Context, providerConfig config.Provider) 
 			return fmt.Errorf("failed to load modes: %w", err)
 		}
 
-		mergedModes := p.templateEngine.MergeStrings(modeContents)
-		ctx.Set(ContextKeyModes, mergedModes)
-		templateContent = strings.Replace(templateContent, modesPlaceholder, mergedModes, 1)
+		mergedModes := p.mergeStrings(modeContents)
+		templateContent = p.templateEngine.InjectModes(templateContent, mergedModes)
 	}
 
 	if len(providerConfig.Workflows) > 0 {
@@ -62,12 +91,11 @@ func (p *ClaudeProvider) Generate(ctx *Context, providerConfig config.Provider) 
 			return fmt.Errorf("failed to load workflows: %w", err)
 		}
 
-		mergedWorkflows := p.templateEngine.MergeStrings(workflowContents)
-		ctx.Set(ContextKeyWorkflows, mergedWorkflows)
-		templateContent = strings.Replace(templateContent, workflowsPlaceholder, mergedWorkflows, 1)
+		mergedWorkflows := p.mergeStrings(workflowContents)
+		templateContent = p.templateEngine.InjectWorkflows(templateContent, mergedWorkflows)
 	}
 
-	output, err := p.templateEngine.Process(templateContent, ctx)
+	output, err := p.templateEngine.Process(templateContent, ctxData)
 	if err != nil {
 		return fmt.Errorf("failed to process template: %w", err)
 	}
@@ -83,7 +111,7 @@ func (p *ClaudeProvider) Generate(ctx *Context, providerConfig config.Provider) 
 		return fmt.Errorf("failed to generate config files: %w", err)
 	}
 
-	if err := p.copyAgents(providerConfig, ctx); err != nil {
+	if err := p.copyAgents(providerConfig, ctxData); err != nil {
 		return fmt.Errorf("failed to copy agents: %w", err)
 	}
 
@@ -129,23 +157,20 @@ func (p *ClaudeProvider) collectAllTools(providerConfig config.Provider) []strin
 	return allTools
 }
 
-func (p *ClaudeProvider) extractMCPServers(allTools *[]string) ([]string, map[string]MCPServerConfig) {
-	enabledServers := []string{}
-	mcpServers := make(map[string]MCPServerConfig)
-
+func (p *ClaudeProvider) extractMCPServers(allTools *[]string) ([]string, map[string]ClaudeMCPServerConfig) {
+	enabledServers := make([]string, 0)
+	mcpServers := make(map[string]ClaudeMCPServerConfig)
 	for name, server := range p.config.MCP {
 		if server.Enabled {
 			enabledServers = append(enabledServers, name)
 			*allTools = append(*allTools, server.Tools...)
-
-			mcpServers[name] = MCPServerConfig{
+			mcpServers[name] = ClaudeMCPServerConfig{
 				Command: server.Command,
 				Args:    server.Args,
 				Env:     server.Env,
 			}
 		}
 	}
-
 	return enabledServers, mcpServers
 }
 
@@ -157,7 +182,7 @@ func (p *ClaudeProvider) writeJSONFile(path string, data interface{}) error {
 	return p.writeOutput(path, string(content))
 }
 
-func (p *ClaudeProvider) copyAgents(providerConfig config.Provider, ctx *Context) error {
+func (p *ClaudeProvider) copyAgents(providerConfig config.Provider, ctxData map[string]interface{}) error {
 	if len(providerConfig.Agents) == 0 {
 		return nil
 	}
@@ -181,7 +206,7 @@ func (p *ClaudeProvider) copyAgents(providerConfig config.Provider, ctx *Context
 		}
 
 		// Process as template with context
-		processedContent, err := p.templateEngine.Process(string(templateContent), ctx)
+		processedContent, err := p.templateEngine.Process(string(templateContent), ctxData)
 		if err != nil {
 			return fmt.Errorf("failed to process agent template %s: %w", agentPath, err)
 		}

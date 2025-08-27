@@ -1,4 +1,4 @@
-package generator
+package provider
 
 import (
 	"encoding/json"
@@ -10,22 +10,54 @@ import (
 	"github.com/hasansino/go42x/pkg/agentenv/config"
 )
 
+const Crush = "crush"
+
 const (
 	crushSchema     = "https://charm.land/crush.json"
 	crushConfigFile = ".crush.json"
 )
 
+// CrushConfig represents .crush.json structure
+type CrushConfig struct {
+	Schema      string                    `json:"$schema"`
+	LSP         map[string]LSPConfig      `json:"lsp"`
+	MCP         map[string]CrushMCPConfig `json:"mcp"`
+	Permissions CrushPermissions          `json:"permissions"`
+}
+
+type LSPConfig struct {
+	Command string `json:"command"`
+}
+
+type CrushMCPConfig struct {
+	Type    string            `json:"type"`              // stdio, http, sse
+	URL     string            `json:"url,omitempty"`     // for sse and http
+	Command string            `json:"command"`           //
+	Args    []string          `json:"args"`              //
+	Env     map[string]string `json:"env,omitempty"`     //
+	Headers map[string]string `json:"headers,omitempty"` // when using sse and http
+}
+
+type CrushPermissions struct {
+	AllowedTools []string `json:"allowed_tools"`
+}
+
 type CrushProvider struct {
 	*BaseProvider
 }
 
-func NewCrushProvider(logger *slog.Logger, cfg *config.Config, templateDir, outputDir string) ProviderGenerator {
+func NewCrushProvider(
+	logger *slog.Logger,
+	cfg *config.Config,
+	templateEngine TemplateEngineAccessor,
+	templateDir, outputDir string,
+) *CrushProvider {
 	return &CrushProvider{
-		BaseProvider: NewBaseProvider(logger, cfg, templateDir, outputDir),
+		BaseProvider: NewBaseProvider(logger, cfg, templateEngine, templateDir, outputDir),
 	}
 }
 
-func (p *CrushProvider) Generate(ctx *Context, providerConfig config.Provider) error {
+func (p *CrushProvider) Generate(ctxData map[string]interface{}, providerConfig config.Provider) error {
 	templateContent, err := p.loadTemplate(providerConfig.Template)
 	if err != nil {
 		return fmt.Errorf("failed to load template: %w", err)
@@ -37,10 +69,8 @@ func (p *CrushProvider) Generate(ctx *Context, providerConfig config.Provider) e
 			return fmt.Errorf("failed to load chunks: %w", err)
 		}
 
-		mergedChunks := p.templateEngine.MergeStrings(chunkContents)
-		ctx.Set(ContextKeyChunks, mergedChunks)
-
-		templateContent = strings.Replace(templateContent, chunksPlaceholder, mergedChunks, 1)
+		mergedChunks := p.mergeStrings(chunkContents)
+		templateContent = p.templateEngine.InjectChunks(templateContent, mergedChunks)
 	}
 
 	if len(providerConfig.Modes) > 0 {
@@ -49,9 +79,8 @@ func (p *CrushProvider) Generate(ctx *Context, providerConfig config.Provider) e
 			return fmt.Errorf("failed to load modes: %w", err)
 		}
 
-		mergedModes := p.templateEngine.MergeStrings(modeContents)
-		ctx.Set(ContextKeyModes, mergedModes)
-		templateContent = strings.Replace(templateContent, modesPlaceholder, mergedModes, 1)
+		mergedModes := p.mergeStrings(modeContents)
+		templateContent = p.templateEngine.InjectModes(templateContent, mergedModes)
 	}
 
 	if len(providerConfig.Workflows) > 0 {
@@ -60,12 +89,11 @@ func (p *CrushProvider) Generate(ctx *Context, providerConfig config.Provider) e
 			return fmt.Errorf("failed to load workflows: %w", err)
 		}
 
-		mergedWorkflows := p.templateEngine.MergeStrings(workflowContents)
-		ctx.Set(ContextKeyWorkflows, mergedWorkflows)
-		templateContent = strings.Replace(templateContent, workflowsPlaceholder, mergedWorkflows, 1)
+		mergedWorkflows := p.mergeStrings(workflowContents)
+		templateContent = p.templateEngine.InjectWorkflows(templateContent, mergedWorkflows)
 	}
 
-	output, err := p.templateEngine.Process(templateContent, ctx)
+	output, err := p.templateEngine.Process(templateContent, ctxData)
 	if err != nil {
 		return fmt.Errorf("failed to process template: %w", err)
 	}

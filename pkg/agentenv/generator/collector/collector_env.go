@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+const EnvironmentCollectorName = "environment"
+
 // EnvironmentCollector collects runtime environment information
 type EnvironmentCollector struct {
 	BaseCollector
@@ -16,11 +18,8 @@ type EnvironmentCollector struct {
 
 func NewEnvironmentCollector(envVars []string) *EnvironmentCollector {
 	return &EnvironmentCollector{
-		BaseCollector: NewBaseCollector(
-			"environment",
-			20,
-		),
-		envVars: envVars,
+		BaseCollector: NewBaseCollector(EnvironmentCollectorName, 20),
+		envVars:       envVars,
 	}
 }
 

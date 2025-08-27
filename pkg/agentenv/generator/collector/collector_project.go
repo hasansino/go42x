@@ -6,6 +6,8 @@ import (
 	"github.com/hasansino/go42x/pkg/agentenv/config"
 )
 
+const ProjectCollectorName = "project"
+
 // ProjectCollector collects project configuration data
 type ProjectCollector struct {
 	BaseCollector
@@ -14,11 +16,8 @@ type ProjectCollector struct {
 
 func NewProjectCollector(cfg *config.Config) *ProjectCollector {
 	return &ProjectCollector{
-		BaseCollector: NewBaseCollector(
-			"project",
-			5,
-		),
-		config: cfg,
+		BaseCollector: NewBaseCollector(ProjectCollectorName, 5),
+		config:        cfg,
 	}
 }
 

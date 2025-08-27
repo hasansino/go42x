@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 )
 
+const AnalysisCollectorName = "analysis"
+
 const analysisFileName = "analysis.gen.md"
 
 // AnalysisCollector collects data from analysis.gen.md
@@ -16,11 +18,8 @@ type AnalysisCollector struct {
 
 func NewAnalysisCollector(templateDir string) *AnalysisCollector {
 	return &AnalysisCollector{
-		BaseCollector: NewBaseCollector(
-			"analysis",
-			50,
-		),
-		templateDir: templateDir,
+		BaseCollector: NewBaseCollector(AnalysisCollectorName, 50),
+		templateDir:   templateDir,
 	}
 }
 
