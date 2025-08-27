@@ -19,7 +19,7 @@ func NewKnowledgeBaseCommand(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&settings.IndexPath, "index", ".agentenv/kwb/index", "path to the index")
+	cmd.PersistentFlags().StringVar(&settings.IndexPath, "index", ".agentenv/kwb/index", "path to the index")
 
 	cmd.AddCommand(newBuildCommand(f, settings))
 	cmd.AddCommand(newSearchCommand(f, settings))

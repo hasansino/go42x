@@ -27,10 +27,13 @@ func runStatsCommand(f *cmdutil.Factory, settings *kwb.Settings) error {
 		return fmt.Errorf("index not found at %s, run 'kwb build' first", settings.IndexPath)
 	}
 
-	service := kwb.NewService(
+	service, err := kwb.NewService(
 		settings,
 		kwb.WithLogger(slog.Default().With("component", "kwb-service")),
 	)
+	if err != nil {
+		return fmt.Errorf("failed to create service: %w", err)
+	}
 	defer service.Close()
 
 	stats, err := service.GetStats(f.Context())

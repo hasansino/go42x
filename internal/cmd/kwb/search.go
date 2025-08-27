@@ -27,6 +27,8 @@ func newSearchCommand(f *cmdutil.Factory, settings *kwb.Settings) *cobra.Command
 	cmd.Flags().IntVar(&settings.SearchLimit, "limit", 10, "maximum number of results")
 	cmd.Flags().BoolVar(&settings.SearchShowScore, "show-score", false, "show relevance scores")
 	cmd.Flags().DurationVar(&settings.SearchTimeout, "timeout", 5*time.Second, "search timeout duration")
+	cmd.Flags().IntVar(&settings.SearchFuzziness, "fuzzy", 0, "fuzzy search distance (0=exact, 1-2=fuzzy)")
+	cmd.Flags().StringVar(&settings.HighlightStyle, "highlight", "ansi", "highlight style: ansi or html")
 
 	return cmd
 }
@@ -36,10 +38,13 @@ func runSearchCommand(f *cmdutil.Factory, settings *kwb.Settings, query string) 
 		return fmt.Errorf("index not found at %s, run 'kwb build' first", settings.IndexPath)
 	}
 
-	service := kwb.NewService(
+	service, err := kwb.NewService(
 		settings,
 		kwb.WithLogger(slog.Default().With("component", "kwb-service")),
 	)
+	if err != nil {
+		return fmt.Errorf("failed to create service: %w", err)
+	}
 	defer service.Close()
 
 	results, err := service.Search(f.Context(), query, settings.SearchLimit)

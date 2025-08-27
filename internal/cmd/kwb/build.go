@@ -22,15 +22,22 @@ func newBuildCommand(f *cmdutil.Factory, settings *kwb.Settings) *cobra.Command 
 
 	cmd.Flags().StringVar(&settings.RootPath, "root", ".", "root directory to index")
 	cmd.Flags().IntVar(&settings.MaxFileSize, "max-file-size", 5*1024*1024, "maximum file size to index in bytes")
+	cmd.Flags().IntVar(&settings.BatchSize, "batch-size", 100, "number of documents to index in a batch")
+	cmd.Flags().StringVar(&settings.IndexType, "index-type", "scorch", "index type: scorch or upsidedown")
+	cmd.Flags().StringSliceVar(&settings.ExcludeDirs, "exclude-dir", nil, "additional directories to exclude")
+	cmd.Flags().StringSliceVar(&settings.ExtraExtensions, "include-ext", nil, "additional file extensions to index")
 
 	return cmd
 }
 
 func runBuildCommand(f *cmdutil.Factory, settings *kwb.Settings) error {
-	service := kwb.NewService(
+	service, err := kwb.NewService(
 		settings,
 		kwb.WithLogger(slog.Default().With("component", "kwb-service")),
 	)
+	if err != nil {
+		return fmt.Errorf("failed to create service: %w", err)
+	}
 	defer service.Close()
 
 	if err := service.BuildIndex(f.Context(), settings.RootPath); err != nil {

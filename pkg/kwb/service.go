@@ -13,7 +13,11 @@ type Service struct {
 	searcher     *Searcher
 }
 
-func NewService(settings *Settings, opts ...Option) *Service {
+func NewService(settings *Settings, opts ...Option) (*Service, error) {
+	if err := settings.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid settings: %w", err)
+	}
+
 	svc := &Service{
 		settings: settings,
 	}
@@ -32,7 +36,7 @@ func NewService(settings *Settings, opts ...Option) *Service {
 	)
 	svc.searcher = newSearcher(settings, svc.indexManager)
 
-	return svc
+	return svc, nil
 }
 
 func (s *Service) BuildIndex(ctx context.Context, rootPath string) error {
@@ -58,7 +62,7 @@ func (s *Service) BuildIndex(ctx context.Context, rootPath string) error {
 }
 
 func (s *Service) Search(ctx context.Context, query string, limit int) ([]SearchResult, error) {
-	s.logger.DebugContext(ctx, "Searching knowledge base",
+	s.logger.InfoContext(ctx, "Searching knowledge base",
 		slog.String("query", query),
 		slog.Int("limit", limit))
 
@@ -67,14 +71,14 @@ func (s *Service) Search(ctx context.Context, query string, limit int) ([]Search
 		return nil, fmt.Errorf("searching: %w", err)
 	}
 
-	s.logger.DebugContext(ctx, "Search complete",
+	s.logger.InfoContext(ctx, "Search complete",
 		slog.Int("results", len(results)))
 
 	return results, nil
 }
 
 func (s *Service) GetFile(ctx context.Context, path string) (string, error) {
-	s.logger.DebugContext(ctx, "Getting file content",
+	s.logger.InfoContext(ctx, "Getting file content",
 		slog.String("path", path))
 
 	content, err := s.searcher.GetFile(path)
@@ -86,7 +90,7 @@ func (s *Service) GetFile(ctx context.Context, path string) (string, error) {
 }
 
 func (s *Service) ListFiles(ctx context.Context, fileType string) ([]string, error) {
-	s.logger.DebugContext(ctx, "Listing files",
+	s.logger.InfoContext(ctx, "Listing files",
 		slog.String("type", fileType))
 
 	files, err := s.searcher.ListFiles(fileType)
@@ -94,14 +98,14 @@ func (s *Service) ListFiles(ctx context.Context, fileType string) ([]string, err
 		return nil, fmt.Errorf("listing files: %w", err)
 	}
 
-	s.logger.DebugContext(ctx, "List complete",
+	s.logger.InfoContext(ctx, "List complete",
 		slog.Int("count", len(files)))
 
 	return files, nil
 }
 
 func (s *Service) GetStats(ctx context.Context) (map[string]interface{}, error) {
-	s.logger.DebugContext(ctx, "Getting index stats")
+	s.logger.InfoContext(ctx, "Getting index stats")
 
 	stats, err := s.indexManager.GetStats()
 	if err != nil {

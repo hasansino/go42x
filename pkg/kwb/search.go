@@ -37,10 +37,19 @@ func (s *Searcher) Search(queryStr string, limit int) ([]SearchResult, error) {
 		limit = s.settings.SearchLimit
 	}
 
+	// Build query - use query string for flexibility
 	bleveQuery := bleve.NewQueryStringQuery(queryStr)
+	
 	searchRequest := bleve.NewSearchRequestOptions(bleveQuery, limit, 0, false)
-	searchRequest.Fields = []string{"Path", "Type"}
-	searchRequest.Highlight = bleve.NewHighlight()
+	searchRequest.Fields = []string{"path", "type"}
+	
+	// Configure highlighting
+	highlight := bleve.NewHighlight()
+	if s.settings.HighlightStyle == "html" {
+		highlight = bleve.NewHighlightWithStyle("html")
+	}
+	// Default highlight style works well for ANSI
+	searchRequest.Highlight = highlight
 
 	result, err := index.Search(searchRequest)
 	if err != nil {
@@ -54,10 +63,10 @@ func (s *Searcher) Search(queryStr string, limit int) ([]SearchResult, error) {
 			Score: hit.Score,
 		}
 
-		if pathField, ok := hit.Fields["Path"].(string); ok {
+		if pathField, ok := hit.Fields["path"].(string); ok {
 			sr.Path = pathField
 		}
-		if typeField, ok := hit.Fields["Type"].(string); ok {
+		if typeField, ok := hit.Fields["type"].(string); ok {
 			sr.Type = typeField
 		}
 
@@ -93,14 +102,14 @@ func (s *Searcher) ListFiles(fileType string) ([]string, error) {
 	var q query.Query
 	if fileType != "" {
 		termQuery := bleve.NewTermQuery(fileType)
-		termQuery.SetField("Type")
+		termQuery.SetField("type")
 		q = termQuery
 	} else {
 		q = bleve.NewMatchAllQuery()
 	}
 
 	searchRequest := bleve.NewSearchRequestOptions(q, 1000, 0, false)
-	searchRequest.Fields = []string{"Path", "Type"}
+	searchRequest.Fields = []string{"path", "type"}
 
 	result, err := index.Search(searchRequest)
 	if err != nil {

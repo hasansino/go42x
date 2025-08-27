@@ -5,9 +5,9 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/blevesearch/bleve/v2"
+	"github.com/blevesearch/bleve/v2/mapping"
 )
 
 var defaultExcludedDirs = []string{
@@ -69,16 +69,30 @@ func (m *IndexManager) BuildIndex(rootPath string) error {
 		return fmt.Errorf("creating index directory: %w", err)
 	}
 
-	// Create new index
-	mapping := bleve.NewIndexMapping()
-	index, err := bleve.New(m.settings.IndexPath, mapping)
+	// Create optimized index mapping
+	mapping := m.createOptimizedMapping()
+
+	// Use configured index type (scorch is faster and more memory efficient)
+	indexType := m.settings.IndexType
+	if indexType == "" {
+		indexType = "scorch"
+	}
+
+	index, err := bleve.NewUsing(m.settings.IndexPath, mapping, indexType, indexType, nil)
 	if err != nil {
 		return fmt.Errorf("creating index: %w", err)
 	}
 	defer index.Close()
 
-	// Walk and index files
+	// Walk and index files with batch processing
 	fileCount := 0
+	batch := index.NewBatch()
+	batchSize := 0
+	maxBatchSize := m.settings.BatchSize
+	if maxBatchSize <= 0 {
+		maxBatchSize = 100
+	}
+
 	err = filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			m.logger.Error("error accessing path", "err", err, "path", path)
@@ -87,8 +101,17 @@ func (m *IndexManager) BuildIndex(rootPath string) error {
 
 		// Skip directories
 		if info.IsDir() {
+			// Check if directory should be excluded
+			dirName := filepath.Base(path)
+			for _, excl := range defaultExcludedDirs {
+				if dirName == excl {
+					m.logger.Info("skipping excluded directory", slog.String("path", path))
+					return filepath.SkipDir
+				}
+			}
 			for _, excl := range m.settings.ExcludeDirs {
-				if strings.Contains(path, excl) {
+				if dirName == excl {
+					m.logger.Info("skipping user-excluded directory", slog.String("path", path))
 					return filepath.SkipDir
 				}
 			}
@@ -99,19 +122,6 @@ func (m *IndexManager) BuildIndex(rootPath string) error {
 		ext := filepath.Ext(path)
 		if !m.shouldIndexFile(m.settings.ExtraExtensions, info.Name(), ext) {
 			return nil
-		}
-
-		// Skip files in excluded directories
-		for _, excl := range defaultExcludedDirs {
-			if strings.Contains(path, excl) {
-				return nil
-			}
-		}
-		// Extra user-defined exclusions
-		for _, excl := range m.settings.ExcludeDirs {
-			if strings.Contains(path, excl) {
-				return nil
-			}
 		}
 
 		// Skip very large files
@@ -138,17 +148,34 @@ func (m *IndexManager) BuildIndex(rootPath string) error {
 			Type:    GetFileType(path),
 		}
 
-		if err := index.Index(doc.ID, doc); err != nil {
-			m.logger.Warn("failed to index file",
-				slog.String("path", path),
-				slog.String("error", err.Error()))
-			return nil
+		// Add to batch
+		batch.Index(doc.ID, doc)
+		batchSize++
+
+		// Process batch when it reaches max size
+		if batchSize >= maxBatchSize {
+			if err := index.Batch(batch); err != nil {
+				m.logger.Error("failed to process batch",
+					slog.String("error", err.Error()))
+				return fmt.Errorf("batch indexing failed: %w", err)
+			}
+			m.logger.Info("processed batch", slog.Int("size", batchSize))
+			batch = index.NewBatch()
+			batchSize = 0
 		}
 
 		fileCount++
-		m.logger.Debug("indexed file", slog.String("path", path))
+		m.logger.Debug("queued file for indexing", slog.String("path", path))
 		return nil
 	})
+
+	// Process remaining documents in batch
+	if batchSize > 0 {
+		if err := index.Batch(batch); err != nil {
+			return fmt.Errorf("final batch indexing failed: %w", err)
+		}
+		m.logger.Info("processed final batch", slog.Int("size", batchSize))
+	}
 
 	if err != nil {
 		return fmt.Errorf("walking directory: %w", err)
@@ -211,6 +238,45 @@ func (m *IndexManager) GetStats() (map[string]interface{}, error) {
 	}
 
 	return stats, nil
+}
+
+func (m *IndexManager) createOptimizedMapping() mapping.IndexMapping {
+	mapping := bleve.NewIndexMapping()
+
+	// Configure default analyzer for better code search
+	mapping.DefaultAnalyzer = "standard"
+
+	// Create document mapping
+	docMapping := bleve.NewDocumentMapping()
+
+	// Path field - keyword for exact matches
+	pathField := bleve.NewKeywordFieldMapping()
+	pathField.Store = true
+	pathField.IncludeInAll = true
+	docMapping.AddFieldMappingsAt("path", pathField)
+
+	// Type field - keyword for filtering
+	typeField := bleve.NewKeywordFieldMapping()
+	typeField.Store = true
+	typeField.IncludeInAll = false
+	docMapping.AddFieldMappingsAt("type", typeField)
+
+	// Content field - text with custom analyzer
+	contentField := bleve.NewTextFieldMapping()
+	contentField.Store = true // Store content for retrieval
+	contentField.IncludeInAll = true
+	contentField.IncludeTermVectors = true // For highlighting
+	contentField.Analyzer = "standard"
+	docMapping.AddFieldMappingsAt("content", contentField)
+
+	// Set as default mapping
+	mapping.DefaultMapping = docMapping
+
+	// Configure to not index dynamic fields
+	mapping.IndexDynamic = false
+	mapping.StoreDynamic = false
+
+	return mapping
 }
 
 func (m *IndexManager) shouldIndexFile(extra []string, name string, ext string) bool {
