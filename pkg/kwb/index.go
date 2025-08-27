@@ -82,7 +82,7 @@ func (m *IndexManager) BuildIndex(rootPath string) error {
 	if err != nil {
 		return fmt.Errorf("creating index: %w", err)
 	}
-	defer index.Close()
+	defer index.Close() // nolint:errcheck
 
 	// Walk and index files with batch processing
 	fileCount := 0
@@ -149,7 +149,13 @@ func (m *IndexManager) BuildIndex(rootPath string) error {
 		}
 
 		// Add to batch
-		batch.Index(doc.ID, doc)
+		err = batch.Index(doc.ID, doc)
+		if err != nil {
+			m.logger.Error("failed to add document to batch",
+				slog.String("path", path),
+				slog.String("error", err.Error()))
+			return nil
+		}
 		batchSize++
 
 		// Process batch when it reaches max size

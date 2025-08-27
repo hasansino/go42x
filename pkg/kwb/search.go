@@ -39,10 +39,10 @@ func (s *Searcher) Search(queryStr string, limit int) ([]SearchResult, error) {
 
 	// Build query - use query string for flexibility
 	bleveQuery := bleve.NewQueryStringQuery(queryStr)
-	
+
 	searchRequest := bleve.NewSearchRequestOptions(bleveQuery, limit, 0, false)
 	searchRequest.Fields = []string{"path", "type"}
-	
+
 	// Configure highlighting
 	highlight := bleve.NewHighlight()
 	if s.settings.HighlightStyle == "html" {

@@ -39,7 +39,7 @@ func runServeCommand(f *cmdutil.Factory, settings *kwb.Settings) error {
 	if err != nil {
 		return fmt.Errorf("failed to create service: %w", err)
 	}
-	defer service.Close()
+	defer service.Close() // nolint:errcheck
 
 	server := kwb.NewMCPServer(service)
 

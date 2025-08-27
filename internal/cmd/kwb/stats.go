@@ -34,7 +34,7 @@ func runStatsCommand(f *cmdutil.Factory, settings *kwb.Settings) error {
 	if err != nil {
 		return fmt.Errorf("failed to create service: %w", err)
 	}
-	defer service.Close()
+	defer service.Close() // nolint:errcheck
 
 	stats, err := service.GetStats(f.Context())
 	if err != nil {

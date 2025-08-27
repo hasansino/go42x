@@ -45,7 +45,7 @@ func runSearchCommand(f *cmdutil.Factory, settings *kwb.Settings, query string) 
 	if err != nil {
 		return fmt.Errorf("failed to create service: %w", err)
 	}
-	defer service.Close()
+	defer service.Close() // nolint:errcheck
 
 	results, err := service.Search(f.Context(), query, settings.SearchLimit)
 	if err != nil {
