@@ -31,11 +31,11 @@ type ClaudeSettings struct {
 
 // ClaudeMCPConfig represents .mcp.json structure
 type ClaudeMCPConfig struct {
-	MCPServers map[string]ClaudeMCPServerConfig `json:"mcpServers"`
+	MCPServers map[string]ClaudeMCPServer `json:"mcpServers"`
 }
 
 // @see https://docs.anthropic.com/en/docs/claude-code/mcp
-type ClaudeMCPServerConfig struct {
+type ClaudeMCPServer struct {
 	Command string            `json:"command"`           //
 	URL     string            `json:"url,omitempty"`     // for sse
 	Type    string            `json:"type,omitempty"`    // sse / http
@@ -157,14 +157,14 @@ func (p *ClaudeProvider) collectAllTools(providerConfig config.Provider) []strin
 	return allTools
 }
 
-func (p *ClaudeProvider) extractMCPServers(allTools *[]string) ([]string, map[string]ClaudeMCPServerConfig) {
+func (p *ClaudeProvider) extractMCPServers(allTools *[]string) ([]string, map[string]ClaudeMCPServer) {
 	enabledServers := make([]string, 0)
-	mcpServers := make(map[string]ClaudeMCPServerConfig)
+	mcpServers := make(map[string]ClaudeMCPServer)
 	for name, server := range p.config.MCP {
 		if server.Enabled {
 			enabledServers = append(enabledServers, name)
 			*allTools = append(*allTools, server.Tools...)
-			mcpServers[name] = ClaudeMCPServerConfig{
+			mcpServers[name] = ClaudeMCPServer{
 				Command: server.Command,
 				Args:    server.Args,
 				Env:     server.Env,

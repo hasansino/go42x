@@ -10,6 +10,22 @@ import (
 
 const Copilot = "copilot"
 
+// ClaudeMCPConfig represents .mcp.json structure
+type CopilotMCPConfig struct {
+	MCPServers map[string]CopilotMCPServer `json:"mcpServers"`
+}
+
+// @see https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/extend-coding-agent-with-mcp
+type CopilotMCPServer struct {
+	Type    string            `json:"type"`              // local, http, sse
+	URL     string            `json:"url,omitempty"`     // for sse and http
+	Command string            `json:"command"`           //
+	Args    []string          `json:"args"`              //
+	Env     map[string]string `json:"env,omitempty"`     // gh secret `COPILOT_MCP_`
+	Headers map[string]string `json:"headers,omitempty"` // for sse and http, gh secret `$COPILOT_MCP_`
+	Tools   []string          `json:"tools,omitempty"`   // list of allowed tools, required for local type
+}
+
 type CopilotProvider struct {
 	*BaseProvider
 }

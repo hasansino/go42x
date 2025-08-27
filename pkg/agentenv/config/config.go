@@ -44,10 +44,12 @@ type MCPServer struct {
 	Enabled bool              `yaml:"enabled"`
 	Type    string            `yaml:"type"`
 	Name    string            `yaml:"name"`
+	URL     string            `yaml:"url"`
 	Command string            `yaml:"command"`
 	Args    []string          `yaml:"args"`
 	Env     map[string]string `yaml:"env"`
 	Tools   []string          `yaml:"tools"`
+	Headers map[string]string `yaml:"headers"`
 }
 
 func LoadConfig(path string) (*Config, error) {

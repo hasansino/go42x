@@ -29,6 +29,7 @@ type LSPConfig struct {
 	Command string `json:"command"`
 }
 
+// @see https://github.com/charmbracelet/crush?tab=readme-ov-file#mcps
 type CrushMCPConfig struct {
 	Type    string            `json:"type"`              // stdio, http, sse
 	URL     string            `json:"url,omitempty"`     // for sse and http
