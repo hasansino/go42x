@@ -1,6 +1,7 @@
 package commit
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -118,6 +119,71 @@ func (g *GitOperations) getConfigValue(key string) string {
 	return strings.TrimSpace(string(output))
 }
 
+// getGlobalGitignoreFile reads core.excludesFile from git config and returns the absolute path
+func (g *GitOperations) getGlobalGitignoreFile() (string, error) {
+	excludesFile := g.getConfigValue("core.excludesFile")
+	if excludesFile == "" {
+		return "", nil // No global gitignore configured
+	}
+
+	// Expand ~ to home directory if needed
+	if strings.HasPrefix(excludesFile, "~/") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("failed to get home directory: %w", err)
+		}
+		excludesFile = filepath.Join(homeDir, excludesFile[2:])
+	}
+
+	// Convert to absolute path if not already
+	if !filepath.IsAbs(excludesFile) {
+		absPath, err := filepath.Abs(excludesFile)
+		if err != nil {
+			return "", fmt.Errorf("failed to get absolute path for %s: %w", excludesFile, err)
+		}
+		excludesFile = absPath
+	}
+
+	return excludesFile, nil
+}
+
+// parseGitignoreFile parses a gitignore file and returns exclude patterns
+func parseGitignoreFile(filePath string) ([]string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []string{}, nil // File doesn't exist, return empty patterns
+		}
+		return nil, fmt.Errorf("failed to open gitignore file %s: %w", filePath, err)
+	}
+	defer file.Close()
+
+	var patterns []string
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+
+		// Skip empty lines and comments
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		// Skip negation patterns (!) for simplicity in exclude-only logic
+		if strings.HasPrefix(line, "!") {
+			continue
+		}
+
+		patterns = append(patterns, line)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read gitignore file: %w", err)
+	}
+
+	return patterns, nil
+}
+
 func (g *GitOperations) GetCurrentBranch() (string, error) {
 	head, err := g.repo.Head()
 	if err != nil {
@@ -159,24 +225,46 @@ func (g *GitOperations) UnstageAll() error {
 	return nil
 }
 
-func (g *GitOperations) StageFiles(excludePatterns []string, includePatterns []string) ([]string, error) {
+func (g *GitOperations) StageFiles(
+	excludePatterns []string,
+	includePatterns []string,
+	useGlobalGitignore bool,
+) ([]string, error) {
 	worktree, err := g.repo.Worktree()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get worktree: %w", err)
 	}
 
+	// Load global gitignore patterns if requested
+	var globalPatterns []string
+	if useGlobalGitignore {
+		globalGitignoreFile, err := g.getGlobalGitignoreFile()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get global gitignore file: %w", err)
+		}
+
+		if globalGitignoreFile != "" {
+			patterns, err := parseGitignoreFile(globalGitignoreFile)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse global gitignore: %w", err)
+			}
+			globalPatterns = patterns
+		}
+	}
+
 	// Optimization: if no patterns specified, use AddWithOptions for better performance
-	if len(excludePatterns) == 0 && len(includePatterns) == 0 {
+	if len(excludePatterns) == 0 && len(includePatterns) == 0 && len(globalPatterns) == 0 {
 		return g.stageAllModified(worktree)
 	}
 
-	// If we have simple include patterns (glob-compatible), try to use AddGlob
-	if len(excludePatterns) == 0 && len(includePatterns) == 1 && isSimpleGlobPattern(includePatterns[0]) {
+	// If we have simple include patterns (glob-compatible) and no global patterns, try to use AddGlob
+	if len(excludePatterns) == 0 && len(includePatterns) == 1 && len(globalPatterns) == 0 &&
+		isSimpleGlobPattern(includePatterns[0]) {
 		return g.stageWithGlob(worktree, includePatterns[0])
 	}
 
 	// Fall back to filtered staging for complex patterns
-	return g.stageFiltered(worktree, excludePatterns, includePatterns)
+	return g.stageFiltered(worktree, excludePatterns, includePatterns, globalPatterns)
 }
 
 // Fast path: stage all modified files
@@ -245,6 +333,7 @@ func (g *GitOperations) stageWithGlob(worktree *git.Worktree, pattern string) ([
 func (g *GitOperations) stageFiltered(
 	worktree *git.Worktree,
 	excludePatterns, includePatterns []string,
+	globalPatterns []string,
 ) ([]string, error) {
 	status, err := worktree.Status()
 	if err != nil {
@@ -259,7 +348,7 @@ func (g *GitOperations) stageFiltered(
 			continue
 		}
 
-		if shouldExcludeFile(file, excludePatterns) {
+		if shouldExcludeFile(file, excludePatterns, globalPatterns) {
 			continue
 		}
 
@@ -548,13 +637,41 @@ func (g *GitOperations) decryptPrivateKey(entity *openpgp.Entity, keyID string) 
 	return nil
 }
 
-func shouldExcludeFile(file string, patterns []string) bool {
-	if len(patterns) == 0 {
+func shouldExcludeFile(file string, excludePatterns []string, globalPatterns []string) bool {
+	// First check global gitignore patterns
+	if len(globalPatterns) > 0 {
+		basename := filepath.Base(file)
+		for _, pattern := range globalPatterns {
+			// Handle directory patterns (ending with /)
+			if strings.HasSuffix(pattern, "/") {
+				dirPattern := strings.TrimSuffix(pattern, "/")
+				if strings.Contains(file, dirPattern+"/") {
+					return true
+				}
+			}
+
+			// Fast string containment check first
+			if strings.Contains(file, pattern) || strings.Contains(basename, pattern) {
+				return true
+			}
+
+			// Glob matching for patterns with wildcards
+			if matched, _ := filepath.Match(pattern, file); matched {
+				return true
+			}
+			if matched, _ := filepath.Match(pattern, basename); matched {
+				return true
+			}
+		}
+	}
+
+	// Then check local exclude patterns (existing logic)
+	if len(excludePatterns) == 0 {
 		return false
 	}
 
 	basename := filepath.Base(file)
-	for _, pattern := range patterns {
+	for _, pattern := range excludePatterns {
 		// Fast string containment check first (most common case)
 		if strings.Contains(file, pattern) || strings.Contains(basename, pattern) {
 			return true

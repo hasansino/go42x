@@ -71,7 +71,11 @@ func (s *Service) Execute(ctx context.Context) error {
 
 	s.logger.DebugContext(ctx, "Staging files...")
 
-	stagedFiles, err := s.gitOps.StageFiles(s.settings.ExcludePatterns, s.settings.IncludePatterns)
+	stagedFiles, err := s.gitOps.StageFiles(
+		s.settings.ExcludePatterns,
+		s.settings.IncludePatterns,
+		s.settings.UseGlobalGitignore,
+	)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "Failed to stage files", "error", err)
 		return fmt.Errorf("failed to stage files: %w", err)

@@ -40,6 +40,7 @@ func newCommitCommand(f *cmdutil.Factory) *cobra.Command {
 	flags.BoolVar(&settings.MultiLine, "multi-line", false, "Use multi-line commit messages")
 	flags.BoolVar(&settings.Push, "push", false, "Push after committing")
 	flags.StringVar(&settings.Tag, "tag", "", "Create and increment semver tag (major|minor|patch)")
+	flags.BoolVar(&settings.UseGlobalGitignore, "use-global-gitignore", true, "Use global gitignore")
 
 	return cmd
 }
