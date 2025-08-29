@@ -14,7 +14,7 @@ import (
 type Generator struct {
 	logger      *slog.Logger
 	config      *config.Config
-	providers   map[string]ProviderAccessor
+	providers   map[string]providerAccessor
 	templateDir string
 	outputDir   string
 }
@@ -23,7 +23,7 @@ func NewGenerator(logger *slog.Logger, cfg *config.Config, templateDir, outputDi
 	g := &Generator{
 		logger:      logger,
 		config:      cfg,
-		providers:   make(map[string]ProviderAccessor),
+		providers:   make(map[string]providerAccessor),
 		templateDir: templateDir,
 		outputDir:   outputDir,
 	}
@@ -81,7 +81,7 @@ func (g *Generator) buildTemplateContext(ctx context.Context) (*Context, error) 
 		tplCtx = newContext(ctx)
 	)
 
-	collectors := []CollectorAccessor{
+	collectors := []collectorAccessor{
 		collector.NewGitCollector(),
 		collector.NewProjectCollector(g.config),
 		collector.NewEnvironmentCollector(g.config.EnvVars),

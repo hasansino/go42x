@@ -32,19 +32,19 @@ const (
 //go:embed analyse.md
 var analysePrompt string
 
-type Analyser struct {
+type analyser struct {
 	logger    *slog.Logger
 	outputDir string
 }
 
-func newAnalyser(logger *slog.Logger, dir string) *Analyser {
-	return &Analyser{
+func newAnalyser(logger *slog.Logger, dir string) *analyser {
+	return &analyser{
 		logger:    logger,
 		outputDir: dir,
 	}
 }
 
-func (a *Analyser) Run(ctx context.Context, provider string, model string) error {
+func (a *analyser) Run(ctx context.Context, provider string, model string) error {
 	if !a.checkToolAvailable(provider) {
 		return fmt.Errorf("provider tool '%s' not found in PATH", provider)
 	}
@@ -112,7 +112,7 @@ func (a *Analyser) Run(ctx context.Context, provider string, model string) error
 	return nil
 }
 
-func (a *Analyser) buildClaudeCommand(ctx context.Context, model string, prompt string) *exec.Cmd {
+func (a *analyser) buildClaudeCommand(ctx context.Context, model string, prompt string) *exec.Cmd {
 	args := []string{
 		"--model", model,
 		prompt,
@@ -120,7 +120,7 @@ func (a *Analyser) buildClaudeCommand(ctx context.Context, model string, prompt 
 	return exec.CommandContext(ctx, "claude", args...)
 }
 
-func (a *Analyser) buildGeminiCommand(ctx context.Context, model string, prompt string) *exec.Cmd {
+func (a *analyser) buildGeminiCommand(ctx context.Context, model string, prompt string) *exec.Cmd {
 	args := []string{
 		"--model", model,
 		"--prompt", prompt,
@@ -128,7 +128,7 @@ func (a *Analyser) buildGeminiCommand(ctx context.Context, model string, prompt 
 	return exec.CommandContext(ctx, "gemini", args...)
 }
 
-func (a *Analyser) buildCodexCommand(ctx context.Context, model string, prompt string) *exec.Cmd {
+func (a *analyser) buildCodexCommand(ctx context.Context, model string, prompt string) *exec.Cmd {
 	args := []string{
 		// "--model", model,
 		prompt,
@@ -136,13 +136,13 @@ func (a *Analyser) buildCodexCommand(ctx context.Context, model string, prompt s
 	return exec.CommandContext(ctx, "codex", args...)
 }
 
-func (a *Analyser) checkToolAvailable(tool string) bool {
+func (a *analyser) checkToolAvailable(tool string) bool {
 	_, err := exec.LookPath(tool)
 	return err == nil
 }
 
 // extractAnalysis extract text between specific markers from the analysis file.
-func (a *Analyser) extractAnalysis(input string) string {
+func (a *analyser) extractAnalysis(input string) string {
 	beginIdx := bytes.Index([]byte(input), []byte(beginMarker))
 	if beginIdx == -1 {
 		a.logger.Warn("Begin marker not found in analysis output")

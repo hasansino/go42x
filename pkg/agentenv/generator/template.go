@@ -13,13 +13,13 @@ const (
 	workflowsPlaceholder = "{{ .workflows }}"
 )
 
-type TemplateEngine struct {
+type templateEngine struct {
 	baseDir   string
 	functions template.FuncMap
 }
 
-func newTemplateEngine(baseDir string) *TemplateEngine {
-	return &TemplateEngine{
+func newTemplateEngine(baseDir string) *templateEngine {
+	return &templateEngine{
 		baseDir:   baseDir,
 		functions: defaultFuncs(),
 	}
@@ -34,7 +34,7 @@ func defaultFuncs() template.FuncMap {
 	}
 }
 
-func (e *TemplateEngine) Process(content string, ctxData map[string]interface{}) (string, error) {
+func (e *templateEngine) Process(content string, ctxData map[string]interface{}) (string, error) {
 	tmpl, err := template.New("main").Funcs(e.functions).Parse(content)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse template: %w", err)
@@ -48,18 +48,18 @@ func (e *TemplateEngine) Process(content string, ctxData map[string]interface{})
 	return buf.String(), nil
 }
 
-func (e *TemplateEngine) InjectChunks(content string, chunks string) string {
+func (e *templateEngine) InjectChunks(content string, chunks string) string {
 	return e.inject(content, chunks, chunksPlaceholder)
 }
 
-func (e *TemplateEngine) InjectModes(content string, modes string) string {
+func (e *templateEngine) InjectModes(content string, modes string) string {
 	return e.inject(content, modes, modesPlaceholder)
 }
 
-func (e *TemplateEngine) InjectWorkflows(content string, workflows string) string {
+func (e *templateEngine) InjectWorkflows(content string, workflows string) string {
 	return e.inject(content, workflows, workflowsPlaceholder)
 }
 
-func (e *TemplateEngine) inject(content string, payload string, placeholder string) string {
+func (e *templateEngine) inject(content string, payload string, placeholder string) string {
 	return strings.Replace(content, placeholder, payload, 1)
 }
