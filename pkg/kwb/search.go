@@ -15,19 +15,19 @@ type SearchResult struct {
 	Preview string
 }
 
-type Searcher struct {
+type searcher struct {
 	settings     *Settings
-	indexManager *IndexManager
+	indexManager *indexManager
 }
 
-func newSearcher(settings *Settings, indexManager *IndexManager) *Searcher {
-	return &Searcher{
+func newSearcher(settings *Settings, indexManager *indexManager) *searcher {
+	return &searcher{
 		settings:     settings,
 		indexManager: indexManager,
 	}
 }
 
-func (s *Searcher) Search(queryStr string, limit int) ([]SearchResult, error) {
+func (s *searcher) Search(queryStr string, limit int) ([]SearchResult, error) {
 	index, err := s.indexManager.GetIndex()
 	if err != nil {
 		return nil, fmt.Errorf("getting index: %w", err)
@@ -85,7 +85,7 @@ func (s *Searcher) Search(queryStr string, limit int) ([]SearchResult, error) {
 	return results, nil
 }
 
-func (s *Searcher) GetFile(path string) (string, error) {
+func (s *searcher) GetFile(path string) (string, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return "", fmt.Errorf("reading file %s: %w", path, err)
@@ -93,7 +93,7 @@ func (s *Searcher) GetFile(path string) (string, error) {
 	return string(content), nil
 }
 
-func (s *Searcher) ListFiles(fileType string) ([]string, error) {
+func (s *searcher) ListFiles(fileType string) ([]string, error) {
 	index, err := s.indexManager.GetIndex()
 	if err != nil {
 		return nil, fmt.Errorf("getting index: %w", err)

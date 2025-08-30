@@ -9,8 +9,8 @@ import (
 type Service struct {
 	logger       *slog.Logger
 	settings     *Settings
-	indexManager *IndexManager
-	searcher     *Searcher
+	indexManager *indexManager
+	searcher     *searcher
 }
 
 func NewService(settings *Settings, opts ...Option) (*Service, error) {

@@ -5,14 +5,14 @@ import (
 	"strings"
 )
 
-type Document struct {
+type document struct {
 	ID      string `json:"id"`
 	Path    string `json:"path"`
 	Content string `json:"content"`
 	Type    string `json:"type"`
 }
 
-func GetFileType(path string) string {
+func getFileType(path string) string {
 	ext := filepath.Ext(path)
 	switch ext {
 	case ".go":

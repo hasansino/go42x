@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	ServerName    = "kwb"
-	ServerVersion = "0.1.0"
+	serverName    = "kwb"
+	serverVersion = "0.1.0"
 )
 
 type MCPServer struct {
@@ -25,8 +25,8 @@ func NewMCPServer(service *Service) *MCPServer {
 
 func (s *MCPServer) Serve(_ context.Context) error {
 	mcpServer := server.NewMCPServer(
-		ServerName,
-		ServerVersion,
+		serverName,
+		serverVersion,
 	)
 
 	searchTool := mcp.NewTool("search",

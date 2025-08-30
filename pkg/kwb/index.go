@@ -43,20 +43,20 @@ var allowedExtensions = []string{
 	".gitignore",
 }
 
-type IndexManager struct {
+type indexManager struct {
 	logger   *slog.Logger
 	settings *Settings
 	index    bleve.Index
 }
 
-func newIndexManager(settings *Settings, logger *slog.Logger) *IndexManager {
-	return &IndexManager{
+func newIndexManager(settings *Settings, logger *slog.Logger) *indexManager {
+	return &indexManager{
 		logger:   logger,
 		settings: settings,
 	}
 }
 
-func (m *IndexManager) BuildIndex(rootPath string) error {
+func (m *indexManager) BuildIndex(rootPath string) error {
 	// Remove old index if exists
 	err := os.RemoveAll(m.settings.IndexPath)
 	if err != nil && !os.IsNotExist(err) {
@@ -141,11 +141,11 @@ func (m *IndexManager) BuildIndex(rootPath string) error {
 			return nil
 		}
 
-		doc := Document{
+		doc := document{
 			ID:      path,
 			Path:    path,
 			Content: string(content),
-			Type:    GetFileType(path),
+			Type:    getFileType(path),
 		}
 
 		// Add to batch
@@ -195,7 +195,7 @@ func (m *IndexManager) BuildIndex(rootPath string) error {
 	return nil
 }
 
-func (m *IndexManager) OpenIndex() error {
+func (m *indexManager) OpenIndex() error {
 	if m.index != nil {
 		return nil // Already open
 	}
@@ -209,7 +209,7 @@ func (m *IndexManager) OpenIndex() error {
 	return nil
 }
 
-func (m *IndexManager) CloseIndex() error {
+func (m *indexManager) CloseIndex() error {
 	if m.index != nil {
 		err := m.index.Close()
 		m.index = nil
@@ -218,7 +218,7 @@ func (m *IndexManager) CloseIndex() error {
 	return nil
 }
 
-func (m *IndexManager) GetIndex() (bleve.Index, error) {
+func (m *indexManager) GetIndex() (bleve.Index, error) {
 	if m.index == nil {
 		if err := m.OpenIndex(); err != nil {
 			return nil, err
@@ -227,7 +227,7 @@ func (m *IndexManager) GetIndex() (bleve.Index, error) {
 	return m.index, nil
 }
 
-func (m *IndexManager) GetStats() (map[string]interface{}, error) {
+func (m *indexManager) GetStats() (map[string]interface{}, error) {
 	index, err := m.GetIndex()
 	if err != nil {
 		return nil, err
@@ -246,7 +246,7 @@ func (m *IndexManager) GetStats() (map[string]interface{}, error) {
 	return stats, nil
 }
 
-func (m *IndexManager) createOptimizedMapping() mapping.IndexMapping {
+func (m *indexManager) createOptimizedMapping() mapping.IndexMapping {
 	mapping := bleve.NewIndexMapping()
 
 	// Configure default analyzer for better code search
@@ -285,7 +285,7 @@ func (m *IndexManager) createOptimizedMapping() mapping.IndexMapping {
 	return mapping
 }
 
-func (m *IndexManager) shouldIndexFile(extra []string, name string, ext string) bool {
+func (m *indexManager) shouldIndexFile(extra []string, name string, ext string) bool {
 	if ext == "" {
 		for _, sf := range allowedExtensions {
 			if name == sf {
