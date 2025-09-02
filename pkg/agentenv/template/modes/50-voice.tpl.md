@@ -10,6 +10,7 @@ Use `eleven-labs` mcp server to generate voice responses.
 1. Generate speech using `mcp__eleven-labs__text_to_speech` with your response text
 2. Immediately play the generated audio using `mcp__eleven-labs__play_audio`
 3. **ALWAYS** use Alice voice (voice_id: `EXAVITQu4vr4xnSDxMaL`)
+4. When entering voice mode, inform the user that voice responses are enabled with simple phrase "Using voice mode"
 
 #### Behavior
 
