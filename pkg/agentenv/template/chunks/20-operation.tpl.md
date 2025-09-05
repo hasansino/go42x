@@ -8,11 +8,10 @@
 - **Parallel processing**: Execute independent operations simultaneously for efficiency
 - **Error handling**: Fail fast with clear error messages and recovery suggestions
 - **State management**: Verify state before and after critical operations
-- **Resource usage**: Optimize for minimal resource consumption
 
 #### Response Guidelines
 
 - **Clarity**: Be concise and direct in explanations
 - **Structure**: Use consistent formatting for code and documentation
-- **Context**: Provide reasoning for technical decisions when relevant
+- **Context**: Provide reasoning for technical decisions
 - **Progress**: Communicate status during long-running operations

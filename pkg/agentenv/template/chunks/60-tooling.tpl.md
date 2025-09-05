@@ -4,6 +4,8 @@ This is list of tools you are allowed to use to help you solve user requests.
 
 #### gh
 
+**git repo** - <https://github.com/cli/cli>
+
 gh is cli tool to interact with GitHub.
 
 - You can use it to interact with GitHub
@@ -11,7 +13,16 @@ gh is cli tool to interact with GitHub.
 
 #### glab
 
+**git repo** - <https://gitlab.com/gitlab-org/cli>
+
 glab is cli tool to interact with GitLab.
 
 - You can use it to interact with GitLab
 - Use to investigate ci/cd, issues, merge requests, and other GitLab resources
+
+#### jira
+
+**git repo** - <https://github.com/ankitpokhrel/jira-cli>
+
+jira is cli tool to interact with Jira.
+It is pre-authenticated.
