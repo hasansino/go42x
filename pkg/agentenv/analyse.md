@@ -9,7 +9,7 @@ Analyze this project and extract STABLE, HIGH-LEVEL information that rarely chan
 - Explain the mental model, not the code structure
 - Wrap your analysis in tags: `### BEGIN ANALYSIS ###` and `### END ANALYSIS ###` (without the backticks)
 
-Example output structure (use Markdown):
+## Example output:
 
 ```Markdown
 
@@ -73,9 +73,13 @@ The architecture follows a modular, service-oriented design philosophy where dis
     - Backward compatibility approach
     - NOT: Current roadmap or pending features
 
+8. **Folder Structure Philosophy**
+    - Rationale behind the organization of code into folders
+    - Document every case with examples
+    - For every example draw tree diagrams
+
 ## Exclude From Analysis
 
-Do not include these volatile implementation details:
 - Current file paths and function names
 - Specific dependencies and versions
 - Implementation details and code snippets

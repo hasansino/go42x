@@ -1,6 +1,7 @@
 package agentenv
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log/slog"
@@ -157,14 +158,12 @@ func updateGitIgnore(outputPath string) error {
 	}
 
 	if stat.Size() > 0 {
-		// Check if the marker already exists
+		// Check if the marker already exists anywhere in the file
 		content, err := os.ReadFile(gitignorePath)
 		if err != nil {
 			return fmt.Errorf("failed to read .gitignore: %w", err)
 		}
-		contentLen := len(content)
-		markerLen := len(gitignoreMarker)
-		if contentLen >= markerLen && string(content[contentLen-markerLen:]) == gitignoreMarker {
+		if bytes.Contains(content, []byte(gitignoreMarker)) {
 			// Marker already exists, no need to add again
 			return nil
 		}

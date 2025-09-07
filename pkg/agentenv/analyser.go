@@ -20,7 +20,7 @@ const (
 	endMarker   = "### END ANALYSIS ###"
 
 	providerClaude = "claude"
-	modelClaude    = "claude-opus-4-1"
+	modelClaude    = "claude-sonnet-4-0"
 
 	providerGemini = "gemini"
 	modelGemini    = "gemini-2.5-pro"
@@ -92,13 +92,25 @@ func (a *analyser) Run(ctx context.Context, provider string, model string) error
 
 	if err != nil {
 		a.logger.Error("Analysis command failed", "error", err, "stderr", errorOutput)
-		if output == "" && errorOutput != "" {
-			output = errorOutput
+		errorDetails := fmt.Sprintf(
+			"# Analysis Failed\n\n## Command Error\n%v\n\n## Standard Error Output\n%s\n\n## Standard Output\n%s\n",
+			err,
+			errorOutput,
+			output,
+		)
+		if output == "" {
+			output = errorDetails
+		} else {
+			output = errorDetails + "\n\n## Original Output\n" + output
 		}
 	}
 
 	if output == "" {
-		return fmt.Errorf("no output from analysis")
+		output = fmt.Sprintf(
+			"# Analysis Failed\n\nNo output generated from the analysis command.\nCommand: %s\nError: %v\n",
+			cmd.String(),
+			err,
+		)
 	}
 
 	output = a.extractAnalysis(output)
