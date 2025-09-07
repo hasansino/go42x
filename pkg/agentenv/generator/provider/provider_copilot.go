@@ -153,10 +153,3 @@ func (p *CopilotProvider) writeJSONFile(path string, data interface{}) error {
 	}
 	return p.writeOutput(path, string(content))
 }
-
-func (p *CopilotProvider) ValidateTools(tools []string) error {
-	if len(tools) > 0 {
-		return fmt.Errorf("copilot provider does not support tools")
-	}
-	return nil
-}

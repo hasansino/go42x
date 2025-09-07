@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
-	"strings"
 
 	"github.com/hasansino/go42x/pkg/agentenv/config"
 )
@@ -168,21 +167,4 @@ func (p *CrushProvider) writeJSONFile(path string, data interface{}) error {
 		return err
 	}
 	return p.writeOutput(path, string(content))
-}
-
-func (p *CrushProvider) ValidateTools(tools []string) error {
-	validTools := map[string]bool{
-		"view": true,
-		"ls":   true,
-		"grep": true,
-		"edit": true,
-	}
-
-	for _, tool := range tools {
-		if !strings.HasPrefix(tool, "mcp__") && !validTools[tool] {
-			return fmt.Errorf("invalid tool for Crush: %s", tool)
-		}
-	}
-
-	return nil
 }

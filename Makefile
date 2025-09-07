@@ -48,6 +48,14 @@ generate:
 	@go mod tidy -e
 	@go generate ./...
 
+## clean | clean build artifacts
+clean:
+	@rm -rf ./build ./dist
+	@rm -rf ./.agentenv ./.claude ./.gemini
+	@rm -f ./.github/.copilot.mcp.json ./.github/copilot-instructions.md
+	@rm -f ./.crush.json ./.mcp.json CLAUDE.md GEMINI.md CRUSH.md
+	@rm -f ./CONVENTIONS.md
+
 # ╭────────────────────----------------──────────╮
 # │                   Release                    │
 # ╰─────────────────────----------------─────────╯

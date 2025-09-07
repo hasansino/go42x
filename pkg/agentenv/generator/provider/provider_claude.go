@@ -226,28 +226,3 @@ func (p *ClaudeProvider) copyAgents(providerConfig config.Provider, ctxData map[
 
 	return nil
 }
-
-func (p *ClaudeProvider) ValidateTools(tools []string) error {
-	validTools := map[string]bool{
-		"Edit":      true,
-		"Glob":      true,
-		"Grep":      true,
-		"LS":        true,
-		"MultiEdit": true,
-		"Read":      true,
-		"Task":      true,
-		"TodoWrite": true,
-		"WebFetch":  true,
-		"WebSearch": true,
-		"Write":     true,
-		"Bash":      true,
-	}
-
-	for _, tool := range tools {
-		if !strings.HasPrefix(tool, "mcp__") && !validTools[tool] {
-			return fmt.Errorf("invalid tool for Claude: %s", tool)
-		}
-	}
-
-	return nil
-}

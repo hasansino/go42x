@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
-	"strings"
 
 	"github.com/hasansino/go42x/pkg/agentenv/config"
 )
@@ -188,28 +187,4 @@ func (p *GeminiProvider) writeJSONFile(path string, data interface{}) error {
 		return err
 	}
 	return p.writeOutput(path, string(content))
-}
-
-func (p *GeminiProvider) ValidateTools(tools []string) error {
-	validTools := map[string]bool{
-		"LSTool":            true,
-		"ReadFileTool":      true,
-		"WriteFileTool":     true,
-		"GrepTool":          true,
-		"GlobTool":          true,
-		"EditTool":          true,
-		"ReadManyFilesTool": true,
-		"ShellTool":         true,
-		"WebFetchTool":      true,
-		"WebSearchTool":     true,
-		"MemoryTool":        true,
-	}
-
-	for _, tool := range tools {
-		if !strings.HasPrefix(tool, "mcp__") && !validTools[tool] {
-			return fmt.Errorf("invalid tool for Gemini: %s", tool)
-		}
-	}
-
-	return nil
 }

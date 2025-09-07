@@ -1,6 +1,6 @@
 ### Tools
 
-This is list of tools you are allowed to use to help you solve user requests.
+This is list of extra tools you are allowed to use to help you solve user requests.
 
 #### gh
 
@@ -25,4 +25,3 @@ glab is cli tool to interact with GitLab.
 **git repo** - <https://github.com/ankitpokhrel/jira-cli>
 
 jira is cli tool to interact with Jira.
-It is pre-authenticated.

@@ -1,6 +1,6 @@
 module github.com/hasansino/go42x
 
-go 1.24.6
+go 1.25.0
 
 require (
 	github.com/blevesearch/bleve/v2 v2.5.3

@@ -1,3 +1,3 @@
 ### Security Requirements
 
-- Never hardcode credentials in source code
+- Never hardcode credentials or secrets in source code

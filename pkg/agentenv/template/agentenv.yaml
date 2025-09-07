@@ -29,7 +29,8 @@ providers:
       - chunks/30-conventions.tpl.md
       - chunks/40-development.tpl.md
       - chunks/50-security.tpl.md
-      - chunks/60-tooling.tpl.md
+      - chunks/60-responding.tpl.md
+      - chunks/70-tooling.tpl.md
     modes:
       - modes/10-default.tpl.md
       - modes/20-noop.tpl.md
@@ -74,7 +75,8 @@ providers:
       - chunks/30-conventions.tpl.md
       - chunks/40-development.tpl.md
       - chunks/50-security.tpl.md
-      - chunks/60-tooling.tpl.md
+      - chunks/60-responding.tpl.md
+      - chunks/70-tooling.tpl.md
     modes:
       - modes/10-default.tpl.md
       - modes/20-noop.tpl.md
@@ -113,7 +115,8 @@ providers:
       - chunks/30-conventions.tpl.md
       - chunks/40-development.tpl.md
       - chunks/50-security.tpl.md
-      - chunks/60-tooling.tpl.md
+      - chunks/60-responding.tpl.md
+      - chunks/70-tooling.tpl.md
     modes:
       - modes/10-default.tpl.md
       - modes/20-noop.tpl.md
@@ -145,7 +148,8 @@ providers:
       - chunks/30-conventions.tpl.md
       - chunks/40-development.tpl.md
       - chunks/50-security.tpl.md
-      - chunks/60-tooling.tpl.md
+      - chunks/60-responding.tpl.md
+      - chunks/70-tooling.tpl.md
     modes:
       - modes/10-default.tpl.md
       - modes/20-noop.tpl.md
