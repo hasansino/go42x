@@ -78,6 +78,10 @@ The architecture follows a modular, service-oriented design philosophy where dis
     - Document every case with examples
     - For every example draw tree diagrams
 
+9. **Design Patterns**
+    - Recurring design patterns used and their purpose
+    - Document every case with examples
+
 ## Exclude From Analysis
 
 - Current file paths and function names

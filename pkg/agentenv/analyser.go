@@ -26,7 +26,7 @@ const (
 	modelGemini    = "gemini-2.5-pro"
 
 	providerCodex = "codex"
-	modelCodex    = "gpt-5"
+	modelCodex    = "gpt-5-nano"
 )
 
 //go:embed analyse.md
@@ -50,6 +50,9 @@ func (a *analyser) Run(ctx context.Context, provider string, model string) error
 	}
 
 	outputFile := filepath.Join(a.outputDir, analysisFileName)
+	stdoutLogFile := filepath.Join(a.outputDir, "analyse.stdout.log")
+	stderrLogFile := filepath.Join(a.outputDir, "analyse.stderr.log")
+	
 	if err := os.MkdirAll(filepath.Dir(a.outputDir), 0755); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
@@ -89,6 +92,20 @@ func (a *analyser) Run(ctx context.Context, provider string, model string) error
 	err := cmd.Run()
 	output := stdout.String()
 	errorOutput := stderr.String()
+
+	// Save stdout log
+	if err := os.WriteFile(stdoutLogFile, stdout.Bytes(), 0644); err != nil {
+		a.logger.Warn("Failed to save stdout log", "error", err)
+	} else {
+		a.logger.Info("Stdout log saved", "file", stdoutLogFile)
+	}
+
+	// Save stderr log
+	if err := os.WriteFile(stderrLogFile, stderr.Bytes(), 0644); err != nil {
+		a.logger.Warn("Failed to save stderr log", "error", err)
+	} else {
+		a.logger.Info("Stderr log saved", "file", stderrLogFile)
+	}
 
 	if err != nil {
 		a.logger.Error("Analysis command failed", "error", err, "stderr", errorOutput)
@@ -142,7 +159,8 @@ func (a *analyser) buildGeminiCommand(ctx context.Context, model string, prompt 
 
 func (a *analyser) buildCodexCommand(ctx context.Context, model string, prompt string) *exec.Cmd {
 	args := []string{
-		// "--model", model,
+		"--model", model,
+		"--full-auto",
 		prompt,
 	}
 	return exec.CommandContext(ctx, "codex", args...)
