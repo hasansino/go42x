@@ -180,6 +180,19 @@ mcp:
       - mcp__gopls__go_symbol_references
       - mcp__gopls__go_diagnostics
 
+  go42x-kwb:
+    enabled: true
+    type: stdio
+    name: go42-kwb
+    command: go42x
+    args:
+      - kwb
+      - serve
+    tools:
+      - mcp__go42_kwb__search
+      - mcp__go42_kwb__get_file
+      - mcp__go42_kwb__list_files
+
   github:
     enabled: true
     type: stdio
@@ -309,25 +322,6 @@ mcp:
       GITLAB_API_URL: https://gitlab.com/api/v4
       USE_PIPELINE: true
 
-  eleven-labs:
-    enabled: true
-    type: stdio
-    name: eleven-labs
-    command: uvx
-    args:
-      - elevenlabs-mcp
-    env:
-      ELEVEN_LABS_API_KEY: "$ELEVEN_LABS_API_KEY"
-    tools:
-      - mcp__eleven_labs__text_to_speech
-      - mcp__eleven_labs__speech_to_text
-      - mcp__eleven_labs__text_to_sound_effects
-      - mcp__eleven_labs__search_voices
-      - mcp__eleven_labs__list_models
-      - mcp__eleven_labs__get_voice
-      - mcp__eleven_labs__text_to_voice
-      - mcp__eleven_labs__play_audio
-
   jira:
     enabled: true
     type: sse
@@ -347,3 +341,22 @@ mcp:
       - mcp__jira__reprioritize_sub_issue
       - mcp__jira__list_sub_issues
       - mcp__jira__assign_copilot_to_issue
+
+  eleven-labs:
+    enabled: true
+    type: stdio
+    name: eleven-labs
+    command: uvx
+    args:
+      - elevenlabs-mcp
+    env:
+      ELEVEN_LABS_API_KEY: "$ELEVEN_LABS_API_KEY"
+    tools:
+      - mcp__eleven_labs__text_to_speech
+      - mcp__eleven_labs__speech_to_text
+      - mcp__eleven_labs__text_to_sound_effects
+      - mcp__eleven_labs__search_voices
+      - mcp__eleven_labs__list_models
+      - mcp__eleven_labs__get_voice
+      - mcp__eleven_labs__text_to_voice
+      - mcp__eleven_labs__play_audio
