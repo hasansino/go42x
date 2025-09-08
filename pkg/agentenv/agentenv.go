@@ -130,6 +130,7 @@ const (
 )
 
 var ignoreFiles = []string{
+	".agentenv/kwb/",
 	".claude/",
 	".mcp.json",
 	"CLAUDE.md",
