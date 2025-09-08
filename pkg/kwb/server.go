@@ -10,7 +10,7 @@ import (
 
 const (
 	serverName    = "kwb"
-	serverVersion = "0.1.0"
+	serverVersion = "0.2.0"
 )
 
 type MCPServer struct {
@@ -55,21 +55,8 @@ func (s *MCPServer) searchHandler(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
-	queryInterface, ok := request.Params.Arguments["query"]
-	if !ok {
-		return mcp.NewToolResultError("Missing query parameter"), nil
-	}
-	query, ok := queryInterface.(string)
-	if !ok {
-		return mcp.NewToolResultError("Invalid query parameter"), nil
-	}
-
-	limit := 10
-	if limitInterface, ok := request.Params.Arguments["limit"]; ok {
-		if limitFloat, ok := limitInterface.(float64); ok && limitFloat > 0 {
-			limit = int(limitFloat)
-		}
-	}
+	query := request.GetString("query", "")
+	limit := request.GetInt("limit", 10)
 
 	results, err := s.service.Search(ctx, query, limit)
 	if err != nil {
@@ -94,20 +81,11 @@ func (s *MCPServer) getFileHandler(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
-	pathInterface, ok := request.Params.Arguments["path"]
-	if !ok {
-		return mcp.NewToolResultError("Missing path parameter"), nil
-	}
-	path, ok := pathInterface.(string)
-	if !ok {
-		return mcp.NewToolResultError("Invalid path parameter"), nil
-	}
-
+	path := request.GetString("path", "")
 	content, err := s.service.GetFile(ctx, path)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Error reading file: %v", err)), nil
 	}
-
 	return mcp.NewToolResultText(content), nil
 }
 
@@ -115,10 +93,7 @@ func (s *MCPServer) listFilesHandler(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
-	fileType := ""
-	if typeInterface, ok := request.Params.Arguments["type"]; ok {
-		fileType, _ = typeInterface.(string)
-	}
+	fileType := request.GetString("type", "")
 
 	files, err := s.service.ListFiles(ctx, fileType)
 	if err != nil {
