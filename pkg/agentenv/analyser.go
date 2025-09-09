@@ -52,7 +52,7 @@ func (a *analyser) Run(ctx context.Context, provider string, model string) error
 	outputFile := filepath.Join(a.outputDir, analysisFileName)
 	stdoutLogFile := filepath.Join(a.outputDir, "analyse.stdout.log")
 	stderrLogFile := filepath.Join(a.outputDir, "analyse.stderr.log")
-	
+
 	if err := os.MkdirAll(filepath.Dir(a.outputDir), 0755); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
