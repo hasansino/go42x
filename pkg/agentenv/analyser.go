@@ -26,10 +26,10 @@ const (
 	modelGemini    = "gemini-2.5-pro"
 
 	providerCodex = "codex"
-	modelCodex    = "gpt-5-nano"
+	modelCodex    = "gpt-5"
 )
 
-//go:embed analyse.md
+//go:embed analyser.md
 var analysePrompt string
 
 type analyser struct {
@@ -47,14 +47,6 @@ func newAnalyser(logger *slog.Logger, dir string) *analyser {
 func (a *analyser) Run(ctx context.Context, provider string, model string) error {
 	if !a.checkToolAvailable(provider) {
 		return fmt.Errorf("provider tool '%s' not found in PATH", provider)
-	}
-
-	outputFile := filepath.Join(a.outputDir, analysisFileName)
-	stdoutLogFile := filepath.Join(a.outputDir, "analyse.stdout.log")
-	stderrLogFile := filepath.Join(a.outputDir, "analyse.stderr.log")
-
-	if err := os.MkdirAll(filepath.Dir(a.outputDir), 0755); err != nil {
-		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
 	var cmd *exec.Cmd
@@ -83,7 +75,11 @@ func (a *analyser) Run(ctx context.Context, provider string, model string) error
 		return fmt.Errorf("failed to build command for provider: %s", provider)
 	}
 
-	a.logger.Info("Running analysis")
+	a.logger.Info("Running analysis",
+		"provider", provider,
+		"model", model,
+		"dir", a.outputDir,
+	)
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -93,44 +89,17 @@ func (a *analyser) Run(ctx context.Context, provider string, model string) error
 	output := stdout.String()
 	errorOutput := stderr.String()
 
-	// Save stdout log
-	if err := os.WriteFile(stdoutLogFile, stdout.Bytes(), 0644); err != nil {
-		a.logger.Warn("Failed to save stdout log", "error", err)
-	} else {
-		a.logger.Info("Stdout log saved", "file", stdoutLogFile)
-	}
-
-	// Save stderr log
-	if err := os.WriteFile(stderrLogFile, stderr.Bytes(), 0644); err != nil {
-		a.logger.Warn("Failed to save stderr log", "error", err)
-	} else {
-		a.logger.Info("Stderr log saved", "file", stderrLogFile)
-	}
-
 	if err != nil {
 		a.logger.Error("Analysis command failed", "error", err, "stderr", errorOutput)
-		errorDetails := fmt.Sprintf(
-			"# Analysis Failed\n\n## Command Error\n%v\n\n## Standard Error Output\n%s\n\n## Standard Output\n%s\n",
-			err,
-			errorOutput,
-			output,
-		)
-		if output == "" {
-			output = errorDetails
-		} else {
-			output = errorDetails + "\n\n## Original Output\n" + output
-		}
-	}
-
-	if output == "" {
-		output = fmt.Sprintf(
-			"# Analysis Failed\n\nNo output generated from the analysis command.\nCommand: %s\nError: %v\n",
-			cmd.String(),
-			err,
-		)
+		return err
 	}
 
 	output = a.extractAnalysis(output)
+	outputFile := filepath.Join(a.outputDir, analysisFileName)
+
+	if err := os.MkdirAll(a.outputDir, 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
 
 	if err := os.WriteFile(outputFile, []byte(output), 0644); err != nil {
 		return fmt.Errorf("failed to write analysis: %w", err)
@@ -144,6 +113,7 @@ func (a *analyser) Run(ctx context.Context, provider string, model string) error
 func (a *analyser) buildClaudeCommand(ctx context.Context, model string, prompt string) *exec.Cmd {
 	args := []string{
 		"--model", model,
+		"-p",
 		prompt,
 	}
 	return exec.CommandContext(ctx, "claude", args...)
@@ -159,6 +129,7 @@ func (a *analyser) buildGeminiCommand(ctx context.Context, model string, prompt 
 
 func (a *analyser) buildCodexCommand(ctx context.Context, model string, prompt string) *exec.Cmd {
 	args := []string{
+		"exec",
 		"--model", model,
 		"--full-auto",
 		prompt,
@@ -173,12 +144,12 @@ func (a *analyser) checkToolAvailable(tool string) bool {
 
 // extractAnalysis extract text between specific markers from the analysis file.
 func (a *analyser) extractAnalysis(input string) string {
-	beginIdx := bytes.Index([]byte(input), []byte(beginMarker))
+	beginIdx := bytes.LastIndex([]byte(input), []byte(beginMarker))
 	if beginIdx == -1 {
 		a.logger.Warn("Begin marker not found in analysis output")
 		return input
 	}
-	endIdx := bytes.Index([]byte(input), []byte(endMarker))
+	endIdx := bytes.LastIndex([]byte(input), []byte(endMarker))
 	if endIdx == -1 || endIdx <= beginIdx {
 		a.logger.Warn("End marker not found or invalid in analysis output")
 		return input

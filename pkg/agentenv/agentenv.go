@@ -71,8 +71,6 @@ func (s *Service) Analyse(ctx context.Context) error {
 		return fmt.Errorf("analysis provider is not set")
 	}
 
-	s.logger.Info("Analysing project", "provider", s.settings.AnalysisProvider)
-
 	targetDir := filepath.Join(s.settings.OutputPath, agentEnvDir)
 	analyser := newAnalyser(s.logger, targetDir)
 
