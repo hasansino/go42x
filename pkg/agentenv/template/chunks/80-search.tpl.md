@@ -1,215 +1,137 @@
-# MCP Tools Usage Guide: go42x-kwb vs gopls
+### Navigation Guide
 
-This guide explains when to use the **go42x-kwb** (Knowledge Base) MCP server versus the **gopls** (Go Language Server) MCP server for analyzing and working with Go code.
+This guide explains how to effectively search and navigate codebases using available tools, from specialized MCP servers to native search utilities.
 
-## Overview
+#### Tool Categories
 
-Both tools serve different purposes in Go code analysis:
-- **go42x-kwb**: A fast, indexed search tool for exploring codebases through keyword and pattern matching
-- **gopls**: A semantic Go analysis tool that understands Go syntax, types, and relationships
+**Specialized MCP Servers** - Language-specific or domain-specific tools that provide semantic understanding:
+- Language servers (gopls for Go, typescript-language-server, rust-analyzer, etc.)
+- Knowledge base servers (go42x-kwb or similar indexed search tools)
+- Documentation servers and API explorers
 
-## When to Use go42x-kwb
+**Native Search Tools** - Built-in utilities for text and pattern matching:
+- **Grep** - Fast regex-based content search across files
+- **Glob** - File pattern matching and discovery
+- **Read** - Direct file content access
+- **Task** - Complex multi-step search operations
 
-The Knowledge Base server excels at **fast text-based searches** and **initial code exploration**.
+#### Choosing the Right Search Tool
 
-### Best Use Cases
+**Start with specialized tools if available**, then fall back to native tools when needed.
 
-1. **Initial Codebase Exploration**
-   - When you need to quickly understand what files exist in a project
-   - Getting an overview of the codebase structure
-   - Finding files by type (code, documentation, config)
-   ```
-   Example: "Show me all configuration files in the project"
-   Tool: mcp__go42x-kwb__list_files with type="config"
-   ```
+**For initial exploration:**
+- Try knowledge base tools (like go42x-kwb) for indexed searches
+- Use Glob to discover file structure and patterns
+- Use Grep for broad keyword searches
+- Example: Finding all configuration files → Try KB tool's list_files, fallback to Glob with "**/*.{json,yaml,toml}"
 
-2. **Keyword and Pattern Search**
-   - Finding all occurrences of a specific string or pattern
-   - Searching for TODO comments, error messages, or specific text
-   - Looking for configuration values or environment variables
-   ```
-   Example: "Find all files mentioning 'database connection'"
-   Tool: mcp__go42x-kwb__search with query="database connection"
-   ```
+**For text and pattern searches:**
+- Try knowledge base search functions first (faster for indexed content)
+- Fall back to Grep for complex regex patterns
+- Use Task for multi-round iterative searches
+- Example: Finding error messages → KB search, then Grep with pattern "error|Error|ERROR"
 
-3. **Quick File Content Retrieval**
-   - When you know the exact file path and need its contents
-   - Reading configuration files, documentation, or scripts
-   - Accessing non-Go files (YAML, JSON, Markdown, etc.)
-   ```
-   Example: "Show me the README file"
-   Tool: mcp__go42x-kwb__get_file with path="README.md"
-   ```
+**For semantic code understanding:**
+- Use language-specific servers when available (gopls, typescript-language-server, etc.)
+- These understand imports, types, symbols, and relationships
+- Fall back to Grep + Read for basic symbol searches
+- Example: Finding function references → Language server's find-references, fallback to Grep
 
-4. **Cross-Language Searches**
-   - Searching across mixed codebases (Go, JavaScript, Python, etc.)
-   - Finding patterns in build scripts, CI/CD configs, and documentation
-   - Exploring test fixtures and data files
+**For file reading:**
+- Use specialized getters if they provide additional context
+- Fall back to Read tool for direct access
+- Combine with language servers for semantic context
+- Example: Reading a config file → KB get_file for metadata, or Read for raw content
 
-### Strengths
-- ✅ Very fast search across large codebases
-- ✅ Works with any file type, not just Go
-- ✅ Great for text pattern matching
-- ✅ Efficient for initial exploration
-- ✅ Lightweight and quick to query
-
-### Limitations
-- ❌ No semantic understanding of Go code
-- ❌ Cannot find references or implementations
-- ❌ No type information or code relationships
-- ❌ No understanding of Go imports or packages
-
-## When to Use gopls
-
-The Go Language Server provides **deep semantic analysis** and **code intelligence** for Go projects.
-
-### Best Use Cases
-
-1. **Understanding Go Code Structure**
-   - Analyzing package dependencies and imports
-   - Understanding module and workspace layout
-   - Getting package API summaries
-   ```
-   Example: "What packages does this project contain?"
-   Tool: mcp__gopls__go_workspace
-   ```
-
-2. **Finding Symbol Definitions and References**
-   - Locating where a function, type, or variable is defined
-   - Finding all usages of a specific symbol
-   - Tracing method calls and type usage
-   ```
-   Example: "Find all references to the Server.Run method"
-   Tool: mcp__gopls__go_symbol_references with symbol="Server.Run"
-   ```
-
-3. **Semantic Code Search**
-   - Finding symbols by name with fuzzy matching
-   - Searching for types, interfaces, functions across packages
-   - Locating implementations of interfaces
-   ```
-   Example: "Find all types with 'Handler' in their name"
-   Tool: mcp__gopls__go_search with query="handler"
-   ```
-
-4. **Code Context and Dependencies**
-   - Understanding file dependencies within a package
-   - Analyzing cross-file relationships
-   - Getting context about imports and usage
-   ```
-   Example: "What does server.go depend on?"
-   Tool: mcp__gopls__go_file_context with file="/path/to/server.go"
-   ```
-
-5. **Package API Analysis**
-   - Understanding public APIs of packages
-   - Exploring third-party dependencies
-   - Reviewing exported types and functions
-   ```
-   Example: "Show me the public API of the storage package"
-   Tool: mcp__gopls__go_package_api with packagePaths=["example.com/storage"]
-   ```
-
-6. **Code Quality and Diagnostics**
-   - Finding compilation errors and issues
-   - Checking for type errors
-   - Validating code changes
-   ```
-   Example: "Check for errors in the edited files"
-   Tool: mcp__gopls__go_diagnostics with files=["/path/to/file.go"]
-   ```
-
-### Strengths
-- ✅ Deep semantic understanding of Go code
-- ✅ Accurate symbol resolution and type information
-- ✅ Understands Go imports, packages, and modules
-- ✅ Can find references, implementations, and dependencies
-- ✅ Provides compilation diagnostics
-
-### Limitations
-- ❌ Only works with Go code
-- ❌ Slower for simple text searches
-- ❌ Requires valid Go code to analyze
-- ❌ More resource-intensive than text search
-
-## Decision Flow Chart
+#### Search Strategy Decision Tree
 
 ```
-Start: What do you need to do?
+What do you need to find?
 │
-├─> Need to search for text/keywords?
-│   └─> Use go42x-kwb__search
+├─> Files by name/type?
+│   ├─> Try: KB list_files or similar
+│   └─> Fallback: Glob with patterns
 │
-├─> Need to list/explore files?
-│   └─> Use go42x-kwb__list_files
+├─> Text/keywords in files?
+│   ├─> Try: KB search functions
+│   └─> Fallback: Grep with regex
 │
-├─> Need to read a specific file?
-│   ├─> Is it a Go file you'll analyze?
-│   │   └─> Use Read tool (built-in) + gopls__go_file_context
-│   └─> Just need contents?
-│       └─> Use go42x-kwb__get_file
+├─> Code symbols/definitions?
+│   ├─> Try: Language server search
+│   └─> Fallback: Grep + Read combination
 │
-├─> Need to find Go symbols/types?
-│   └─> Use gopls__go_search
+├─> Symbol references/usages?
+│   ├─> Try: Language server references
+│   └─> Fallback: Grep across codebase
 │
-├─> Need to find symbol references?
-│   └─> Use gopls__go_symbol_references
+├─> Package/module structure?
+│   ├─> Try: Language server workspace analysis
+│   └─> Fallback: Glob + Read manifest files
 │
-├─> Need to understand package structure?
-│   └─> Use gopls__go_workspace or gopls__go_package_api
-│
-└─> Need to check for Go errors?
-    └─> Use gopls__go_diagnostics
+└─> Complex multi-step search?
+    └─> Use: Task tool for autonomous searching
 ```
 
-## Practical Examples
+#### Practical Search Examples
 
-### Example 1: Understanding a New Codebase
-```
-1. Start with go42x-kwb__list_files to see project structure
-2. Use go42x-kwb__search to find main entry points
-3. Switch to gopls__go_workspace for Go module information
-4. Use gopls__go_package_api to understand key packages
-```
+**Example: Understanding a new codebase**
+1. Check for specialized tools (language servers, KB tools)
+2. Use Glob to map file structure ("**/*.{js,ts,py,go,java}")
+3. Use Grep to find entry points (pattern: "main|Main|entry|start")
+4. Read configuration files to understand setup
+5. Use language servers for dependency analysis if available
 
-### Example 2: Finding and Fixing a Bug
-```
-1. Use go42x-kwb__search to find error messages or relevant keywords
-2. Use gopls__go_symbol_references to trace function calls
-3. Use gopls__go_file_context to understand dependencies
-4. After editing, use gopls__go_diagnostics to verify fixes
-```
+**Example: Finding and fixing a bug**
+1. Search error messages with KB tool or Grep
+2. Use language server to trace symbol references
+3. Fall back to Grep for text-based call tracking
+4. Read relevant files for context
+5. Verify fixes with language diagnostics or tests
 
-### Example 3: Adding a New Feature
-```
-1. Use gopls__go_search to find similar existing features
-2. Use gopls__go_package_api to understand available APIs
-3. Use go42x-kwb__search to find examples in tests
-4. Use gopls__go_diagnostics after implementation
-```
+**Example: Adding a new feature**
+1. Search for similar features with semantic search
+2. Fall back to Grep for pattern matching
+3. Use Glob to find related test files
+4. Read API documentation and examples
+5. Use language server for type checking if available
 
-## Performance Considerations
+#### Performance Tips
 
-- **Use go42x-kwb** for:
-  - Initial exploration (fast overview)
-  - Broad text searches across many files
-  - Non-Go file access
-  - Quick keyword lookups
+**Fast operations:**
+- Indexed KB searches (milliseconds)
+- Glob for file discovery (fast for patterns)
+- Read for known file paths (instant)
 
-- **Use gopls** for:
-  - Precise symbol location
-  - Understanding code relationships
-  - Type-safe refactoring preparation
-  - Compilation checking
+**Moderate operations:**
+- Grep on small-medium codebases (seconds)
+- Language server queries (depends on project size)
 
-## Summary Rules
+**Slower operations:**
+- Grep on very large codebases (may take longer)
+- Complex Task operations (multiple rounds)
+- Initial language server indexing
 
-1. **Start with go42x-kwb** when exploring unknown codebases
-2. **Use go42x-kwb** for text/pattern searches
-3. **Switch to gopls** when you need semantic understanding
-4. **Use gopls** for Go-specific analysis and refactoring
-5. **Combine both** for comprehensive code analysis
-6. **Prefer go42x-kwb** for non-Go files
-7. **Prefer gopls** for Go symbol resolution and type information
+#### Search Tool Priority Order
 
-Remember: go42x-kwb is your "grep on steroids" while gopls is your "Go code intelligence engine". Use them together for maximum effectiveness!
+1. **Specialized MCP tools** (if available and applicable)
+   - Language servers for semantic understanding
+   - Knowledge base for indexed searches
+   - Domain-specific tools
+
+2. **Native search tools** (always available)
+   - Grep for content search
+   - Glob for file patterns
+   - Read for direct access
+   - Task for complex searches
+
+3. **Combination strategies**
+   - Use specialized tools for precision
+   - Use native tools for breadth
+   - Combine both for comprehensive analysis
+
+**Key principles:**
+- Start specific (specialized tools) then go broad (native tools)
+- Use semantic search for code understanding
+- Use text search for patterns and keywords
+- Combine tools for best results
+- Always have native tools as fallback
