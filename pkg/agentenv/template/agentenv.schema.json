@@ -1,0 +1,213 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/hasansino/go42x/agentenv/schema/v1.0",
+  "title": "AgentEnv Configuration Schema",
+  "description": "Schema for .agentenv configuration file",
+  "type": "object",
+  "required": ["version", "project"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Configuration version",
+      "pattern": "^\\d+\\.\\d+$",
+      "examples": ["1.0"]
+    },
+    "project": {
+      "type": "object",
+      "description": "Project metadata",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Project name",
+          "minLength": 1
+        },
+        "language": {
+          "type": "string",
+          "description": "Primary programming language",
+          "examples": ["go", "python", "javascript", "typescript", "rust"]
+        },
+        "description": {
+          "type": "string",
+          "description": "Project description"
+        },
+        "tags": {
+          "type": "array",
+          "description": "Project tags",
+          "items": {
+            "type": "string"
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Additional project metadata",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "env": {
+      "type": "array",
+      "description": "Environment variables to pass to providers",
+      "items": {
+        "type": "string"
+      }
+    },
+    "providers": {
+      "type": "object",
+      "description": "AI provider configurations",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["template", "output"],
+        "properties": {
+          "template": {
+            "type": "string",
+            "description": "Template file path"
+          },
+          "output": {
+            "type": "string",
+            "description": "Output file path"
+          },
+          "chunks": {
+            "type": "array",
+            "description": "Template chunk files to include",
+            "items": {
+              "type": "string"
+            }
+          },
+          "modes": {
+            "type": "array",
+            "description": "Available modes",
+            "items": {
+              "type": "string"
+            }
+          },
+          "workflows": {
+            "type": "array",
+            "description": "Workflow templates",
+            "items": {
+              "type": "string"
+            }
+          },
+          "agents": {
+            "type": "array",
+            "description": "Agent templates",
+            "items": {
+              "type": "string"
+            }
+          },
+          "hooks": {
+            "type": "array",
+            "description": "Hook configurations",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tools": {
+            "type": "array",
+            "description": "Available tools",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "mcp": {
+      "type": "object",
+      "description": "MCP (Model Context Protocol) server configurations",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether this MCP server is enabled",
+            "default": true
+          },
+          "type": {
+            "type": "string",
+            "description": "Server connection type",
+            "enum": ["stdio", "http", "sse"],
+            "default": "stdio"
+          },
+          "name": {
+            "type": "string",
+            "description": "Server name",
+            "minLength": 1
+          },
+          "url": {
+            "type": "string",
+            "description": "Server URL (for http/sse types)",
+            "format": "uri"
+          },
+          "command": {
+            "type": "string",
+            "description": "Command to execute (for stdio type)"
+          },
+          "args": {
+            "type": "array",
+            "description": "Command arguments",
+            "items": {
+              "type": "string"
+            }
+          },
+          "env": {
+            "type": "object",
+            "description": "Environment variables for the server",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "tools": {
+            "type": "array",
+            "description": "Available tools from this server",
+            "items": {
+              "type": "string",
+              "pattern": "^mcp__[a-z0-9_]+__[a-z0-9_]+$"
+            }
+          },
+          "headers": {
+            "type": "object",
+            "description": "HTTP headers (for http/sse types)",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "cwd": {
+            "type": "string",
+            "description": "Working directory for the server"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "stdio"
+                }
+              }
+            },
+            "then": {
+              "required": ["command"]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "enum": ["http", "sse"]
+                }
+              }
+            },
+            "then": {
+              "required": ["url"]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

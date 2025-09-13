@@ -1,9 +1,9 @@
 ---
-name: manager
+name: dummy
 description: NOOP
 model: inherit
 ---
 
-# Manager
+# Dummy
 
 NOOP

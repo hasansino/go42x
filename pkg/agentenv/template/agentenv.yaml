@@ -1,6 +1,8 @@
 ---
 
-version: 1.0
+# yaml-language-server: $schema=./agentenv.schema.json
+
+version: "1.0"
 
 project:
   name: go42x
@@ -47,10 +49,7 @@ providers:
       - workflows/50-investigation.tpl.md
       - workflows/60-code-review.tpl.md
     agents:
-      - claude/agents/george.tpl.md
-      - claude/agents/manager.tpl.md
-    hooks:
-      - voice
+      - claude/agents/dummy.tpl.md
     tools:
       - Edit
       - Glob
