@@ -1,0 +1,81 @@
+package config
+
+import (
+	"io/fs"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/santhosh-tekuri/jsonschema/v6"
+	"gopkg.in/yaml.v3"
+
+	"github.com/go42-dev/go42x/assets"
+)
+
+func compileSchema(t *testing.T) *jsonschema.Schema {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join("..", "..", "assets", "schemas", "go42x.schema.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document map[string]any
+	if err := yaml.Unmarshal(data, &document); err != nil {
+		t.Fatal(err)
+	}
+	compiler := jsonschema.NewCompiler()
+	if err := compiler.AddResource("go42x.schema.yaml", document); err != nil {
+		t.Fatal(err)
+	}
+	compiled, err := compiler.Compile("go42x.schema.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return compiled
+}
+
+func TestSchemaDefaultConfig(t *testing.T) {
+	templates, err := assets.AgentEnvTemplates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := fs.ReadFile(templates, "go42x.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document map[string]any
+	if err := yaml.Unmarshal(data, &document); err != nil {
+		t.Fatal(err)
+	}
+	if err := compileSchema(t).Validate(document); err != nil {
+		t.Fatalf("bundled configuration does not match the editor schema: %v", err)
+	}
+}
+
+func TestSchemaRepresentativeFields(t *testing.T) {
+	compiled := compileSchema(t)
+	const base = `version: "1.0"
+project: {name: example}
+context: {template: agents.tpl.md}
+`
+	for _, tt := range []struct {
+		name, content string
+		valid         bool
+	}{
+		{"disabled provider", "providers: {codex: {enabled: false}}", true},
+		{"provider enabled must be boolean", "providers: {codex: {enabled: 'false'}}", false},
+		{"HTTP server", `providers: {codex: {}}
+mcp: {remote: {name: remote, type: http, url: https://example.com/mcp}}`, true},
+		{"tools must be an array", `providers: {codex: {}}
+mcp: {local: {name: local, command: example, tools: search}}`, false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var document map[string]any
+			if err := yaml.Unmarshal([]byte(base+tt.content), &document); err != nil {
+				t.Fatal(err)
+			}
+			if err := compiled.Validate(document); (err == nil) != tt.valid {
+				t.Errorf("schema validation = %v, want valid %v", err, tt.valid)
+			}
+		})
+	}
+}

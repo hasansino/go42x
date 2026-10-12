@@ -3,8 +3,8 @@ package generator
 import (
 	"context"
 
-	"github.com/go42-dev/go42x/pkg/agentenv/config"
-	"github.com/go42-dev/go42x/pkg/agentenv/generator/output"
+	"github.com/go42-dev/go42x/pkg/config"
+	"github.com/go42-dev/go42x/pkg/fspatch"
 )
 
 //go:generate mockgen -source $GOFILE -package mocks -destination mocks/mocks.go
@@ -16,5 +16,5 @@ type collectorAccessor interface {
 }
 
 type providerAccessor interface {
-	Prepare(plan *output.Plan, ctxData map[string]any, cfg config.Provider) error
+	Prepare(plan *fspatch.Plan, ctxData map[string]any, cfg config.Provider) error
 }

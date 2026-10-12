@@ -15,7 +15,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
-	"github.com/go42-dev/go42x/pkg/agentenv/config"
+	"github.com/go42-dev/go42x/pkg/config"
 	"github.com/go42-dev/go42x/pkg/doctor/check"
 )
 

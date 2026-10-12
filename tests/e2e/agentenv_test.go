@@ -2,6 +2,8 @@ package e2e_test
 
 import (
 	"encoding/json"
+	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -10,6 +12,8 @@ import (
 	"testing"
 
 	"github.com/pelletier/go-toml/v2"
+
+	"github.com/go42-dev/go42x/assets"
 )
 
 func TestGeneratedDirectoriesArePrivate(t *testing.T) {
@@ -32,13 +36,98 @@ func TestGeneratedDirectoriesArePrivate(t *testing.T) {
 	}
 }
 
+func TestAgentEnvUpstream(t *testing.T) {
+	t.Parallel()
+	p := newProject(t)
+	// Init and update must use the bundle even when downloads cannot work.
+	p.env = append(p.env, "HTTP_PROXY=http://127.0.0.1:1", "HTTPS_PROXY=http://127.0.0.1:1")
+	p.configure(t)
+	p.write(t, ".go42x/agents.tpl.md", "# {{ .project.name }}\n\n{{ .chunks }}\n")
+	p.write(t, ".go42x/go42x.local.yaml", "context: {chunks-dir: chunks/}\n")
+	templates, err := assets.AgentEnvTemplates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	documents := []string{
+		"upstream/go/code-review-comments.md",
+		"upstream/google-go/index.md",
+		"upstream/google-go/guide.md",
+		"upstream/google-go/decisions.md",
+		"upstream/google-go/best-practices.md",
+	}
+	for _, path := range documents {
+		want, err := fs.ReadFile(templates, path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := p.read(t, ".go42x/"+path); got == "" || got != string(want) {
+			t.Errorf("init did not install the bundled reference %s", path)
+		}
+	}
+	p.run(t, 0, "agentenv", "generate")
+	instructions := p.read(t, "AGENTS.md")
+	if !strings.Contains(instructions, "# Go Code Style\n") {
+		t.Fatal("generation omitted the Go style chunk")
+	}
+	for _, path := range documents {
+		if !strings.Contains(instructions, ".go42x/"+path) {
+			t.Errorf("generated instructions do not point to %s", path)
+		}
+		if strings.Contains(instructions, p.read(t, ".go42x/"+path)) {
+			t.Errorf("generation inserted the full reference %s into the instructions", path)
+		}
+	}
+	const reference = ".go42x/upstream/go/code-review-comments.md"
+	const custom = ".go42x/upstream/custom.md"
+	p.write(t, reference, "Customized reference\n")
+	p.write(t, custom, "Additional project reference\n")
+	beforeInit := p.snapshot(t)
+	p.run(t, 0, "agentenv", "init")
+	p.assertUnchanged(t, beforeInit)
+	p.run(t, 0, "agentenv", "update")
+	want, err := fs.ReadFile(templates, "upstream/go/code-review-comments.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := p.read(t, reference); got != string(want) {
+		t.Error("update did not restore the bundled reference")
+	}
+	if got := p.read(t, custom); got != "Additional project reference\n" {
+		t.Error("update changed an additional project reference")
+	}
+	backups, err := filepath.Glob(
+		filepath.Join(p.root, ".go42x/backups/updates/*/files", filepath.FromSlash(reference)),
+	)
+	if err != nil || len(backups) != 1 {
+		t.Fatalf("reference backups = %v, %v", backups, err)
+	}
+	backup, err := os.ReadFile(backups[0])
+	if err != nil || string(backup) != "Customized reference\n" {
+		t.Errorf("reference backup = %q, %v", backup, err)
+	}
+	if got := p.read(t, "AGENTS.md"); got != instructions {
+		t.Error("update regenerated instructions")
+	}
+	if err := filepath.WalkDir(p.root, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if strings.HasPrefix(entry.Name(), ".vendor.") {
+			t.Errorf("installed maintainer metadata: %s", path)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestAgentEnvLifecycle(t *testing.T) {
 	t.Parallel()
 	p := newProject(t)
 	p.write(t, ".gitignore", "user-entry\n")
 	p.configure(t)
-	if !json.Valid([]byte(p.read(t, ".go42x/go42x.schema.json"))) {
-		t.Fatal("init did not install a valid JSON schema")
+	if _, err := os.Stat(filepath.Join(p.root, ".go42x/go42x.schema.yaml")); !os.IsNotExist(err) {
+		t.Fatalf("init installed a local editor schema: %v", err)
 	}
 	p.write(t, ".go42x/custom.md", "User instructions\n")
 	p.write(t, ".claude/agents/custom.md", "User agent\n")
@@ -308,13 +397,41 @@ func TestAgentEnvUpdate(t *testing.T) {
 	p := newProject(t)
 	p.configure(t)
 	p.write(t, ".go42x/go42x.local.yaml", "project: {name: local-project}\nproviders: {claude: {enabled: true}}\n")
-	p.write(t, ".go42x/chunks/900-custom.tpl.md", "Additional project instructions")
-	p.write(t, "AGENTS.md", "Original instructions")
-	p.write(t, ".agents/plugins/project-tools/plugin.json", "Disabled provider plugin")
+	preserved := map[string]string{
+		".go42x/go42x.local.yaml":                   p.read(t, ".go42x/go42x.local.yaml"),
+		".go42x/chunks/900-custom.tpl.md":           "Additional project instructions",
+		"AGENTS.md":                                 "Original instructions",
+		".claude/settings.local.json":               `{"user_setting":"preserved"}`,
+		".agents/plugins/project-tools/plugin.json": "Existing provider plugin",
+	}
+	for path, content := range preserved {
+		p.write(t, path, content)
+	}
+	p.env = append(p.env, "GO42X_PROVIDERS=unknown-provider")
+	originalGitIgnore := "before\n# go42x -- START\nobsolete\n# go42x -- END\nafter\n"
+	p.write(t, ".gitignore", originalGitIgnore)
 	p.write(t, ".go42x/chunks/100-operation.tpl.md", "Customized bundled chunk")
 	originalConfig := p.read(t, ".go42x/go42x.yaml")
 	result := p.run(t, 0, "agentenv", "update")
-	if !strings.Contains(result.stdout, "Backup: ") || !strings.Contains(result.stdout, "regenerated") {
+	templates, err := assets.AgentEnvTemplates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceCount := 1 // Managed .gitignore block.
+	if err := fs.WalkDir(templates, ".", func(_ string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !entry.IsDir() {
+			sourceCount++
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(result.stdout, "Backup: ") ||
+		!strings.Contains(result.stdout, fmt.Sprintf("Updated %d source files.", sourceCount)) ||
+		!strings.Contains(result.stdout, "Run go42x agentenv generate") {
 		t.Fatalf("missing update summary: %s", result.stdout)
 	}
 	backups, err := filepath.Glob(filepath.Join(p.root, ".go42x/backups/updates/*"))
@@ -322,7 +439,7 @@ func TestAgentEnvUpdate(t *testing.T) {
 		t.Fatalf("update backup = %v, %v", backups, err)
 	}
 	for path, want := range map[string]string{
-		"AGENTS.md":                          "Original instructions",
+		".gitignore":                         originalGitIgnore,
 		".go42x/go42x.yaml":                  originalConfig,
 		".go42x/chunks/100-operation.tpl.md": "Customized bundled chunk",
 	} {
@@ -334,21 +451,38 @@ func TestAgentEnvUpdate(t *testing.T) {
 	if p.read(t, ".go42x/go42x.yaml") == originalConfig {
 		t.Fatal("project configuration was not replaced")
 	}
-	instructions := p.read(t, "AGENTS.md")
-	if !strings.Contains(instructions, "local-project") ||
-		!strings.Contains(instructions, "Additional project instructions") {
-		t.Fatalf("update did not regenerate instructions: %s", instructions)
+	gitignore := p.read(t, ".gitignore")
+	if !strings.HasPrefix(gitignore, "before\n# go42x -- START\n") ||
+		!strings.HasSuffix(gitignore, "# go42x -- END\nafter\n") ||
+		strings.Contains(gitignore, "obsolete") || !strings.Contains(gitignore, ".go42x/backups/\n") {
+		t.Fatalf("update did not replace the managed gitignore block: %s", gitignore)
+	}
+	for path, want := range preserved {
+		if got := p.read(t, path); got != want {
+			t.Errorf("update changed %s: %q, want %q", path, got, want)
+		}
+		if _, err := os.Stat(filepath.Join(backups[0], "files", filepath.FromSlash(path))); !os.IsNotExist(err) {
+			t.Errorf("update backed up an unchanged custom file or generated output %s: %v", path, err)
+		}
 	}
 	if _, err := os.Stat(filepath.Join(p.root, "CLAUDE.md")); !os.IsNotExist(err) {
 		t.Fatalf("update generated obsolete Claude wrapper: %v", err)
 	}
-	if p.read(t, ".agents/plugins/project-tools/plugin.json") != "Disabled provider plugin" {
-		t.Fatal("update changed the disabled provider's plugin")
+	for _, path := range []string{".build", ".mcp.json", ".codex"} {
+		if _, err := os.Stat(filepath.Join(p.root, path)); !os.IsNotExist(err) {
+			t.Errorf("update created %s: %v", path, err)
+		}
 	}
 	p.run(t, 0, "agentenv", "update")
 	backups, err = filepath.Glob(filepath.Join(p.root, ".go42x/backups/updates/*"))
 	if err != nil || len(backups) != 2 {
 		t.Fatalf("repeated update did not create another backup: %v, %v", backups, err)
+	}
+	p.run(t, 0, "agentenv", "generate", "--providers=claude")
+	instructions := p.read(t, "AGENTS.md")
+	if !strings.Contains(instructions, "local-project") ||
+		!strings.Contains(instructions, "Additional project instructions") {
+		t.Fatalf("explicit generation did not use the updated sources: %s", instructions)
 	}
 }
 
@@ -356,7 +490,11 @@ func TestAgentEnvUpdateFailureBeforeApplication(t *testing.T) {
 	t.Parallel()
 	for _, scenario := range []struct{ name, path, content string }{
 		{"invalid local configuration", ".go42x/go42x.local.yaml", "version: ["},
-		{"invalid provider settings", ".claude/settings.local.json", "{"},
+		{"unknown local field", ".go42x/go42x.local.yaml", "providers: {claude: {enable: true}}"},
+		{"invalid effective configuration", ".go42x/go42x.local.yaml", "context: {template: null}"},
+		{"incompatible configuration", ".go42x/go42x.local.yaml",
+			"providers: {claude: {enabled: true}}\nmcp: {gopls: {cwd: src}}\n"},
+		{"malformed gitignore block", ".gitignore", "# go42x -- START\nuser rules\n"},
 		{"backup failure", ".go42x/backups/updates", "blocked"},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
@@ -372,10 +510,39 @@ func TestAgentEnvUpdateFailureBeforeApplication(t *testing.T) {
 	}
 }
 
+func TestAgentEnvUpdateDoesNotReadProviderSettingsOrTemplates(t *testing.T) {
+	t.Parallel()
+	p := newProject(t)
+	p.configure(t)
+	p.write(t, ".build", "not a directory")
+	p.write(t, ".go42x/go42x.local.yaml",
+		"providers: {claude: {enabled: true}}\n"+
+			"context: {template: ../missing.tpl.md, chunks-dir: ../missing-chunks}\n")
+	preserved := map[string]string{
+		".claude/settings.local.json":     "{",
+		".go42x/chunks/900-custom.tpl.md": "{{ if }}",
+		".build":                          "not a directory",
+	}
+	for path, content := range preserved {
+		p.write(t, path, content)
+	}
+	p.run(t, 0, "agentenv", "update")
+	for path, want := range preserved {
+		if got := p.read(t, path); got != want {
+			t.Errorf("update changed %s: %q, want %q", path, got, want)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(p.root, "AGENTS.md")); !os.IsNotExist(err) {
+		t.Fatalf("update generated instructions: %v", err)
+	}
+}
+
 func TestAgentEnvUpdateUsage(t *testing.T) {
 	t.Parallel()
 	p := newProject(t)
-	for _, option := range []string{"--dry-run", "--no-generate", "--keep", "--replace", "unexpected-argument"} {
+	for _, option := range []string{
+		"--dry-run", "--no-generate", "--providers=codex", "--keep", "--replace", "unexpected-argument",
+	} {
 		before := p.snapshot(t)
 		p.run(t, 2, "agentenv", "update", option)
 		p.assertUnchanged(t, before)

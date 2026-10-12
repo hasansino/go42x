@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go42-dev/go42x/pkg/agentenv/config"
+	"github.com/go42-dev/go42x/pkg/config"
 )
 
 type Settings struct {

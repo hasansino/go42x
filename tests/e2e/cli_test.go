@@ -12,7 +12,7 @@ func TestHelpVersionAndUsage(t *testing.T) {
 	p := newProject(t)
 	before := p.snapshot(t)
 	help := p.run(t, 0, "--help")
-	for _, name := range []string{"agentenv", "doctor", "kwb", "mcp", "version"} {
+	for _, name := range []string{"agentenv", "doctor", "kwb", "mcp", "vendor", "version"} {
 		if !strings.Contains(help.stdout, "\n  "+name+" ") {
 			t.Errorf("help does not list %s: %s", name, help.stdout)
 		}

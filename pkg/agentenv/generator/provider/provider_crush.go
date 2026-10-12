@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/go42-dev/go42x/pkg/agentenv/config"
-	"github.com/go42-dev/go42x/pkg/agentenv/generator/output"
+	"github.com/go42-dev/go42x/pkg/config"
+	"github.com/go42-dev/go42x/pkg/fspatch"
 )
 
 const (
@@ -57,7 +57,7 @@ func NewCrushProvider(
 	}
 }
 
-func (p *CrushProvider) Prepare(plan *output.Plan, _ map[string]any, providerConfig config.Provider) error {
+func (p *CrushProvider) Prepare(plan *fspatch.Plan, _ map[string]any, providerConfig config.Provider) error {
 	if err := p.prepareConfigFiles(plan, providerConfig); err != nil {
 		return fmt.Errorf("failed to prepare config files: %w", err)
 	}
@@ -65,7 +65,7 @@ func (p *CrushProvider) Prepare(plan *output.Plan, _ map[string]any, providerCon
 	return nil
 }
 
-func (p *CrushProvider) prepareConfigFiles(plan *output.Plan, providerConfig config.Provider) error {
+func (p *CrushProvider) prepareConfigFiles(plan *fspatch.Plan, providerConfig config.Provider) error {
 	allTools := p.collectAllTools(providerConfig)
 	mcpConfig := p.extractMCPServers(&allTools)
 

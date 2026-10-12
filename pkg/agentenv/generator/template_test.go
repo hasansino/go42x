@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go42-dev/go42x/pkg/agentenv/config"
-	"github.com/go42-dev/go42x/pkg/agentenv/generator/output"
+	"github.com/go42-dev/go42x/pkg/config"
+	"github.com/go42-dev/go42x/pkg/fspatch"
 )
 
 func TestTemplateProcessing(t *testing.T) {
@@ -125,7 +125,7 @@ func TestTemplateGenerationErrors(t *testing.T) {
 			}
 			g := NewGenerator(slog.New(slog.DiscardHandler), &config.Config{Context: cfg}, dir, out)
 			if err := g.prepareInstructions(
-				output.NewPlan(slog.New(slog.DiscardHandler), out),
+				fspatch.NewPlan(slog.New(slog.DiscardHandler), out, filepath.Join(out, ".go42x", "backups")),
 				map[string]any{"items": []string{"a"}},
 				false,
 			); err == nil ||

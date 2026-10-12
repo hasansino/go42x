@@ -75,16 +75,16 @@ jobs:
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: 'go.mod'
-      - name: 'Install pinned Gosec'
+      - name: 'Install pinned security tools'
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
           version: '2026.9.1'
-          install_args: --locked go:github.com/securego/gosec/v2/cmd/gosec
+          install_args: --locked task go:github.com/securego/gosec/v2/cmd/gosec
           # Rebuild the cached binary when the project's Go version changes.
           cache_key_prefix: mise-gosec-v1-${{ hashFiles('go.mod') }}
       - name: 'Run Gosec security scanner'
         shell: bash
-        run: gosec -terse -exclude-generated -exclude-dir=.build -exclude-dir=.tools ./...
+        run: task lint:go-security
 
   govulncheck:
     name: govulncheck

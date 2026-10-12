@@ -8,11 +8,11 @@ import (
 	"maps"
 	"strings"
 
-	"github.com/go42-dev/go42x/pkg/agentenv/generator/output"
+	"github.com/go42-dev/go42x/pkg/fspatch"
 )
 
 // prepareJSONFile replaces the supplied top-level fields, preserving other settings.
-func (p *BaseProvider) prepareJSONFile(plan *output.Plan, path string, data any) error {
+func (p *BaseProvider) prepareJSONFile(plan *fspatch.Plan, path string, data any) error {
 	return p.prepareJSONSettings(plan, path, data, nil, nil)
 }
 
@@ -20,7 +20,7 @@ func (p *BaseProvider) prepareJSONFile(plan *output.Plan, path string, data any)
 // individual fields so replacing a tool list never replaces its parent object.
 // A missing managed field in data deletes that field from the existing settings.
 func (p *BaseProvider) prepareJSONSettings(
-	plan *output.Plan,
+	plan *fspatch.Plan,
 	path string,
 	data any,
 	managed, defaults []string,
@@ -71,13 +71,13 @@ func (p *BaseProvider) prepareJSONSettings(
 		return fmt.Errorf("failed to encode settings: %w", err)
 	}
 	if exists && bytes.Equal(before, after) {
-		return plan.Write(path, previous, output.Settings, false)
+		return plan.Write(path, previous, fspatch.Settings, false)
 	}
 	var formatted bytes.Buffer
 	if err := json.Indent(&formatted, after, "", "  "); err != nil {
 		return fmt.Errorf("failed to format settings: %w", err)
 	}
-	return plan.Write(path, formatted.Bytes(), output.Settings, false)
+	return plan.Write(path, formatted.Bytes(), fspatch.Settings, false)
 }
 
 func decodeJSONSettings(content []byte) (map[string]any, error) {

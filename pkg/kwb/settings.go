@@ -138,6 +138,19 @@ func (s *ReadSettings) Validate() error {
 	return nil
 }
 
+// CheckSettings configures an index freshness check and its output format.
+type CheckSettings struct {
+	KnowledgeBase *Settings
+	JSON          bool
+}
+
+func (s *CheckSettings) Validate() error {
+	if s == nil {
+		return fmt.Errorf("settings cannot be nil")
+	}
+	return s.KnowledgeBase.Validate()
+}
+
 // StatsSettings configures index statistics and their output format.
 type StatsSettings struct {
 	KnowledgeBase *Settings

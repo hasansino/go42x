@@ -8,8 +8,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/go42-dev/go42x/pkg/agentenv/config"
-	"github.com/go42-dev/go42x/pkg/agentenv/generator/output"
+	"github.com/go42-dev/go42x/pkg/config"
+	"github.com/go42-dev/go42x/pkg/fspatch"
 )
 
 const (
@@ -60,7 +60,7 @@ func NewClaudeProvider(
 }
 
 func (p *ClaudeProvider) Prepare(
-	plan *output.Plan,
+	plan *fspatch.Plan,
 	ctxData map[string]any,
 	providerConfig config.Provider,
 ) error {
@@ -75,7 +75,7 @@ func (p *ClaudeProvider) Prepare(
 	return nil
 }
 
-func (p *ClaudeProvider) prepareConfigFiles(plan *output.Plan, providerConfig config.Provider) error {
+func (p *ClaudeProvider) prepareConfigFiles(plan *fspatch.Plan, providerConfig config.Provider) error {
 	allTools := p.collectAllTools(providerConfig)
 	enabledServers, mcpServers := p.extractMCPServers(&allTools)
 
@@ -143,7 +143,7 @@ func (p *ClaudeProvider) extractMCPServers(allTools *[]string) ([]string, map[st
 }
 
 func (p *ClaudeProvider) prepareAgents(
-	plan *output.Plan,
+	plan *fspatch.Plan,
 	providerConfig config.Provider,
 	ctxData map[string]any,
 ) error {
@@ -175,7 +175,7 @@ func (p *ClaudeProvider) prepareAgents(
 		// Prepare destination: {outputDir}/.claude/agents/{agent}.md
 		destFile := fmt.Sprintf("%s.md", agentName)
 		destPath := filepath.Join(destAgentsDir, destFile)
-		if err := plan.Write(destPath, []byte(processedContent), output.Settings, false); err != nil {
+		if err := plan.Write(destPath, []byte(processedContent), fspatch.Settings, false); err != nil {
 			return fmt.Errorf("failed to prepare agent %s: %w", agentName, err)
 		}
 

@@ -16,6 +16,7 @@ import (
 
 	"github.com/go42-dev/go42x/internal/cmd/agentenv"
 	"github.com/go42-dev/go42x/internal/cmd/kwb"
+	"github.com/go42-dev/go42x/internal/cmd/vendoring"
 	"github.com/go42-dev/go42x/internal/cmdutil"
 )
 
@@ -76,6 +77,7 @@ func NewGo42Command(ctx context.Context, f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(NewDoctorCommand(f))
 	cmd.AddCommand(kwb.NewKnowledgeBaseCommand(f))
 	cmd.AddCommand(agentenv.NewAgentEnvCommand(f))
+	cmd.AddCommand(vendoring.NewVendoringCommand(f))
 
 	cmdutil.ConfigureCommands(cmd)
 

@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"path/filepath"
 
-	"github.com/go42-dev/go42x/pkg/agentenv/config"
-	"github.com/go42-dev/go42x/pkg/agentenv/generator/output"
+	"github.com/go42-dev/go42x/pkg/config"
+	"github.com/go42-dev/go42x/pkg/fspatch"
 )
 
 const (
@@ -46,7 +46,7 @@ func NewCopilotProvider(
 	}
 }
 
-func (p *CopilotProvider) Prepare(plan *output.Plan, _ map[string]any, _ config.Provider) error {
+func (p *CopilotProvider) Prepare(plan *fspatch.Plan, _ map[string]any, _ config.Provider) error {
 	if err := p.prepareConfigFiles(plan); err != nil {
 		return fmt.Errorf("failed to prepare config files: %w", err)
 	}
@@ -54,7 +54,7 @@ func (p *CopilotProvider) Prepare(plan *output.Plan, _ map[string]any, _ config.
 	return nil
 }
 
-func (p *CopilotProvider) prepareConfigFiles(plan *output.Plan) error {
+func (p *CopilotProvider) prepareConfigFiles(plan *fspatch.Plan) error {
 	mcpConfig := p.extractMCPServers()
 
 	// Generate the project MCP configuration shared with Claude when enabled.

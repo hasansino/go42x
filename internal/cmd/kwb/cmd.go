@@ -9,6 +9,7 @@ import (
 
 func NewKnowledgeBaseCommand(f *cmdutil.Factory) *cobra.Command {
 	defaults := kwb.NewSettings()
+
 	cmd := &cobra.Command{
 		Use:   "kwb",
 		Short: "Manage the knowledge base",
@@ -19,12 +20,15 @@ func NewKnowledgeBaseCommand(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().
-		String("index", defaults.IndexPath, "path to the index")
-	cmd.PersistentFlags().
-		String("root", defaults.RootPath, "root directory to index")
-	cmd.PersistentFlags().
-		Duration("search-timeout", defaults.SearchTimeout, "maximum duration of a knowledge-base read")
+	cmd.PersistentFlags().String(
+		"index", defaults.IndexPath,
+		"path to the index")
+	cmd.PersistentFlags().String(
+		"root", defaults.RootPath,
+		"root directory to index")
+	cmd.PersistentFlags().Duration(
+		"search-timeout", defaults.SearchTimeout,
+		"maximum duration of a knowledge-base read")
 
 	cmd.AddCommand(
 		newBuildCommand(f),

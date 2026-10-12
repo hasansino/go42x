@@ -7,7 +7,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/go42-dev/go42x/pkg/agentenv/config"
+	"github.com/go42-dev/go42x/pkg/config"
 )
 
 func TestGenerateProviderToggles(t *testing.T) {

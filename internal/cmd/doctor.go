@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/go42-dev/go42x/internal/cmdutil"
+	"github.com/go42-dev/go42x/pkg/config"
 	"github.com/go42-dev/go42x/pkg/doctor"
 	"github.com/go42-dev/go42x/pkg/doctor/check"
 )
@@ -21,17 +22,19 @@ func NewDoctorCommand(f *cmdutil.Factory) *cobra.Command {
 		Args:        cobra.NoArgs,
 		Annotations: map[string]string{"result-output": "true"},
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			providers, err := cmdutil.ProviderSelection(cmd)
-			if err != nil {
-				return cmdutil.UsageError(err)
-			}
 			settings := &doctor.Settings{
 				RootPath:  viper.GetString("root"),
 				IndexPath: viper.GetString("index"),
 				ProbeMCP:  viper.GetBool("probe-mcp"),
 				Timeout:   viper.GetDuration("timeout"),
 				JSON:      viper.GetBool("json"),
-				Providers: providers,
+			}
+			if cmdutil.ExplicitFlag(cmd, "providers") {
+				var err error
+				settings.Providers, err = config.ParseProviders(viper.GetString("providers"))
+				if err != nil {
+					return cmdutil.UsageError(err)
+				}
 			}
 			if err := settings.Validate(); err != nil {
 				return cmdutil.UsageError(err)
@@ -40,11 +43,16 @@ func NewDoctorCommand(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("json", false, "print structured diagnostics")
-	cmd.Flags().String("root", defaults.RootPath, "project root to inspect")
-	cmd.Flags().Bool("probe-mcp", false, "start/connect to enabled servers, initialize, and list tools (no tool calls)")
-	cmd.Flags().Duration("timeout", defaults.Timeout, "maximum duration of each MCP probe")
-	cmd.Flags().String("index", "", "knowledge-base index path (default .go42x/kwb/index)")
+	cmd.Flags().
+		Bool("json", false, "print structured diagnostics")
+	cmd.Flags().
+		String("root", defaults.RootPath, "project root to inspect")
+	cmd.Flags().
+		Bool("probe-mcp", false, "start/connect to enabled servers, initialize, and list tools (no tool calls)")
+	cmd.Flags().
+		Duration("timeout", defaults.Timeout, "maximum duration of each MCP probe")
+	cmd.Flags().
+		String("index", "", "knowledge-base index path (default .go42x/kwb/index)")
 	cmd.Flags().
 		String("providers", "", "exact comma-separated provider list (empty selects none); overrides GO42X_PROVIDERS")
 

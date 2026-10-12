@@ -144,6 +144,11 @@ tasks:
         go tool cover -html=.build/coverage.out -o=.build/coverage.html
         go tool cover -func=.build/coverage.out | grep '^total:'
 
+  test:integration:
+    desc: "test services and source adapters together with local HTTP and Git fixtures"
+    cmds:
+      - "go test -count=1 -v -race -timeout=5m ./tests/integration/..."
+
   test:e2e:
     desc: "test the compiled CLI in isolated temporary projects"
     summary: >-
@@ -168,9 +173,21 @@ tasks:
 
   build:
     desc: "build the binary for the current platform or GOOS/GOARCH"
+    summary: >-
+      Usage: task build [VERSION=dev] [COMMIT=<revision>]. Commit defaults to Git HEAD; version defaults to dev.
+    vars:
+      VERSION: '{{.VERSION | default "dev"}}'
+      GIT_COMMIT:
+        sh: git rev-parse --verify HEAD 2>/dev/null || true
+      COMMIT: '{{.COMMIT | default .GIT_COMMIT}}'
+      LDFLAGS: >-
+        -s -w
+        -X github.com/go42-dev/go42x/internal/version.xBuildVersion={{.VERSION}}
+        -X github.com/go42-dev/go42x/internal/version.xBuildCommit={{.COMMIT}}
     cmds:
       - "mkdir -p .build"
-      - "go build -mod=readonly -trimpath -buildvcs=false -o .build/go42x ."
+      - 'CGO_ENABLED=0 SOURCE_DATE_EPOCH=0 go build -v -mod=readonly -trimpath -buildvcs=false -ldflags {{.LDFLAGS | shellQuote}}
+        -o .build/go42x .'
 
   generate:
     desc: "generate code for all modules"
@@ -247,16 +264,21 @@ tasks:
 
   lint:
     desc: "run Go, configuration, and documentation linters"
+    preconditions:
+      - sh: |
+          set -- {{.CLI_ARGS}}
+          [ "$#" -eq 0 ]
+        msg: "Use a lint:* task for file or package arguments."
     cmds:
-      - task: lint:go
-      - task: lint:go-security
-      - task: lint:vulnerabilities
-      - task: lint:secrets
-      - task: lint:json
-      - task: lint:yaml
-      - task: lint:toml
-      - task: lint:actions
-      - task: docs:check
+      - task: "lint:go"
+      - task: "lint:go-security"
+      - task: "lint:vulnerabilities"
+      - task: "lint:secrets"
+      - task: "lint:json"
+      - task: "lint:yaml"
+      - task: "lint:toml"
+      - task: "lint:actions"
+      - task: "docs:check"
 
   lint:go:
     desc: "Lint all Go packages, or explicit local packages and subtrees (read only)"
@@ -270,9 +292,14 @@ tasks:
         "{{.TOOLS_BIN}}/golangci-lint" run --config etc/golangci.yml "$@"
 
   lint:go-security:
-    desc: "Check handwritten Go code with Gosec"
+    desc: "Check Go code with gosec"
+    vars:
+      PACKAGE_DIRS:
+        sh: go list -f '{{"{{"}}.Dir{{"}}"}}' ./...
     cmds:
-      - '"{{.TOOLS_BIN}}/gosec" -terse -exclude-generated -exclude-dir=.build -exclude-dir=.tools ./...'
+      - |
+        set -- {{range splitList "\n" .PACKAGE_DIRS}}{{if .}}{{. | shellQuote}} {{end}}{{end}}
+        "{{.TOOLS_BIN}}/gosec" -terse -exclude-generated "$@"
 
   lint:vulnerabilities:
     desc: "Check CLI vulnerabilities for all release platforms"
@@ -386,7 +413,7 @@ tasks:
   docs:check:
     desc: "Lint documentation Markdown"
     cmds:
-      - task: lint:markdown
+      - task: "lint:markdown"
         vars:
           CLI_ARGS: ""
 

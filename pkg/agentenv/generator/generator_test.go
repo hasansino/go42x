@@ -13,17 +13,17 @@ import (
 
 	"go.uber.org/mock/gomock"
 
-	"github.com/go42-dev/go42x/pkg/agentenv/config"
 	"github.com/go42-dev/go42x/pkg/agentenv/generator/mocks"
-	"github.com/go42-dev/go42x/pkg/agentenv/generator/output"
 	"github.com/go42-dev/go42x/pkg/agentenv/generator/provider"
+	"github.com/go42-dev/go42x/pkg/config"
+	"github.com/go42-dev/go42x/pkg/fspatch"
 )
 
 func TestGenerateTempDirectory(t *testing.T) {
 	t.Setenv("PATH", "")
 	t.Setenv("GITHUB_ACTIONS", "false")
 	for name, templateDir := range map[string]string{
-		"bundled": filepath.Join("..", "..", "..", "assets", "agentenv", "template"),
+		"bundled": filepath.Join("..", "..", "..", "assets", "agentenv"),
 		"project": filepath.Join("..", "..", "..", ".go42x"),
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -130,7 +130,7 @@ func TestGeneratorContextAndProviderErrors(t *testing.T) {
 		p := mocks.NewMockproviderAccessor(ctrl)
 		p.EXPECT().
 			Prepare(gomock.Any(), gomock.Any(), cfg.Providers[name]).
-			DoAndReturn(func(_ *output.Plan, data map[string]any, _ config.Provider) error {
+			DoAndReturn(func(_ *fspatch.Plan, data map[string]any, _ config.Provider) error {
 				if data["provider"] != name {
 					t.Errorf("provider context = %v, want %s", data["provider"], name)
 				}
@@ -222,7 +222,7 @@ func TestGeneratePrepareEnvInstructions(t *testing.T) {
 	} {
 		t.Setenv(key, value)
 	}
-	templateDir := filepath.Join("..", "..", "..", "assets", "agentenv", "template")
+	templateDir := filepath.Join("..", "..", "..", "assets", "agentenv")
 	cfg, err := config.LoadConfig(filepath.Join(templateDir, "go42x.yaml"))
 	if err != nil {
 		t.Fatal(err)
@@ -292,7 +292,7 @@ func TestGenerateMCPConfigurations(t *testing.T) {
 	t.Setenv("API_KEY", "test-api-key")
 	t.Setenv("CONTEXT7_API_KEY", "test-context7-key")
 	t.Setenv("GITHUB_PERSONAL_ACCESS_TOKEN", "test-github-token")
-	templateDir := filepath.Join("..", "..", "..", "assets", "agentenv", "template")
+	templateDir := filepath.Join("..", "..", "..", "assets", "agentenv")
 	cfg, err := config.LoadConfig(filepath.Join(templateDir, "go42x.yaml"))
 	if err != nil {
 		t.Fatal(err)

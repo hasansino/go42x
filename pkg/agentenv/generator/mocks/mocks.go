@@ -13,8 +13,8 @@ import (
 	context "context"
 	reflect "reflect"
 
-	config "github.com/go42-dev/go42x/pkg/agentenv/config"
-	output "github.com/go42-dev/go42x/pkg/agentenv/generator/output"
+	config "github.com/go42-dev/go42x/pkg/config"
+	fspatch "github.com/go42-dev/go42x/pkg/fspatch"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -110,7 +110,7 @@ func (m *MockproviderAccessor) EXPECT() *MockproviderAccessorMockRecorder {
 }
 
 // Prepare mocks base method.
-func (m *MockproviderAccessor) Prepare(plan *output.Plan, ctxData map[string]any, cfg config.Provider) error {
+func (m *MockproviderAccessor) Prepare(plan *fspatch.Plan, ctxData map[string]any, cfg config.Provider) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Prepare", plan, ctxData, cfg)
 	ret0, _ := ret[0].(error)

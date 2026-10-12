@@ -10,14 +10,14 @@ import (
 
 	"go.uber.org/mock/gomock"
 
-	"github.com/go42-dev/go42x/pkg/agentenv/config"
-	"github.com/go42-dev/go42x/pkg/agentenv/generator/output"
 	"github.com/go42-dev/go42x/pkg/agentenv/generator/provider/mocks"
+	"github.com/go42-dev/go42x/pkg/config"
+	"github.com/go42-dev/go42x/pkg/fspatch"
 )
 
 type testProvider interface {
-	Prepare(*output.Plan, map[string]any, config.Provider) error
-	prepareJSONFile(*output.Plan, string, any) error
+	Prepare(*fspatch.Plan, map[string]any, config.Provider) error
+	prepareJSONFile(*fspatch.Plan, string, any) error
 }
 
 func makeProvider(
@@ -64,7 +64,7 @@ func TestProviderGenerationErrors(t *testing.T) {
 			}
 			p := makeProvider(t, name, &config.Config{}, nil, dir, out)
 			if err := p.Prepare(
-				output.NewPlan(slog.New(slog.DiscardHandler), out),
+				fspatch.NewPlan(slog.New(slog.DiscardHandler), out, filepath.Join(out, ".go42x", "backups")),
 				nil,
 				config.Provider{},
 			); err == nil ||
@@ -80,7 +80,7 @@ func TestProviderJSONWriting(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			dir := t.TempDir()
 			p := makeProvider(t, name, &config.Config{}, nil, dir, dir)
-			plan := output.NewPlan(slog.New(slog.DiscardHandler), dir)
+			plan := fspatch.NewPlan(slog.New(slog.DiscardHandler), dir, filepath.Join(dir, ".go42x", "backups"))
 			path := filepath.Join(dir, "nested", "config.json")
 			if err := p.prepareJSONFile(plan, path, map[string]any{"enabled": true, "name": "example"}); err != nil {
 				t.Fatal(err)
@@ -100,17 +100,17 @@ func TestProviderJSONWriting(t *testing.T) {
 
 func TestPreparedOutputFiles(t *testing.T) {
 	dir := t.TempDir()
-	plan := output.NewPlan(slog.New(slog.DiscardHandler), dir)
+	plan := fspatch.NewPlan(slog.New(slog.DiscardHandler), dir, filepath.Join(dir, ".go42x", "backups"))
 	writeTestFile(t, filepath.Join(dir, "a.md"), "  alpha \n")
 	if err := plan.Write(
 		filepath.Join(dir, "a.md", "child"),
-		[]byte("data"), output.Settings, false,
+		[]byte("data"), fspatch.Settings, false,
 	); err == nil ||
-		!strings.Contains(err.Error(), "failed to read") {
+		!strings.Contains(err.Error(), "output parent must be a real directory") {
 		t.Fatalf("prepare error = %v", err)
 	}
-	path := filepath.Join(dir, "new", "nested", "output.md")
-	if err := plan.Write(path, []byte("rendered"), output.Settings, false); err != nil {
+	path := filepath.Join(dir, "new", "nested", "files.md")
+	if err := plan.Write(path, []byte("rendered"), fspatch.Settings, false); err != nil {
 		t.Fatal(err)
 	}
 	if err := plan.Apply(); err != nil {
@@ -129,7 +129,7 @@ func TestClaudeAgents(t *testing.T) {
 			writeTestFile(t, filepath.Join(dir, "agents", "reviewer.tpl.md"), "Review {{ .project }}")
 			engine := mocks.NewMockTemplateEngineAccessor(gomock.NewController(t))
 			p := NewClaudeProvider(slog.New(slog.DiscardHandler), &config.Config{}, engine, dir, out)
-			plan := output.NewPlan(slog.New(slog.DiscardHandler), out)
+			plan := fspatch.NewPlan(slog.New(slog.DiscardHandler), out, filepath.Join(out, ".go42x", "backups"))
 			pc := config.Provider{Agents: []string{"agents/reviewer.tpl.md"}}
 			data := map[string]any{"project": "example"}
 			want := ""
@@ -190,7 +190,7 @@ func TestClaudeAdditionalOutputFailures(t *testing.T) {
 				want = "failed to prepare agents"
 			}
 			p := NewClaudeProvider(slog.New(slog.DiscardHandler), &config.Config{}, engine, dir, out)
-			plan := output.NewPlan(slog.New(slog.DiscardHandler), out)
+			plan := fspatch.NewPlan(slog.New(slog.DiscardHandler), out, filepath.Join(out, ".go42x", "backups"))
 			if err := p.Prepare(plan, nil, pc); err == nil || !strings.Contains(err.Error(), want) {
 				t.Fatalf("Prepare() = %v, want %s", err, want)
 			}

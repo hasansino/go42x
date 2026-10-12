@@ -11,12 +11,12 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/go42-dev/go42x/pkg/agentenv/config"
+	"github.com/go42-dev/go42x/pkg/config"
 )
 
 func defaultContextTemplate(t *testing.T) string {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join("..", "..", "..", "assets", "agentenv", "template", "agents.tpl.md"))
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", "assets", "agentenv", "agents.tpl.md"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -2,7 +2,6 @@ package agentenv
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"io/fs"
 	"log/slog"
@@ -14,7 +13,8 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/go42-dev/go42x/assets"
-	"github.com/go42-dev/go42x/pkg/agentenv/config"
+	"github.com/go42-dev/go42x/internal/version"
+	"github.com/go42-dev/go42x/pkg/config"
 )
 
 func testService(t *testing.T, dir string, clean bool) *Service {
@@ -83,13 +83,13 @@ func TestInitExtractsTemplatesAndPreservesCustomFiles(t *testing.T) {
 			t.Errorf("removed template directory %s was installed: %v", removed, err)
 		}
 	}
-	schemaPath := filepath.Join(dir, ".go42x/go42x.schema.json")
-	if string(readFile(t, schemaPath)) != config.Schema() {
-		t.Fatal("installed schema differs from the embedded schema")
+	schemaPath := filepath.Join(dir, ".go42x/go42x.schema.yaml")
+	if _, err := os.Stat(schemaPath); !os.IsNotExist(err) {
+		t.Fatalf("init installed a local editor schema: %v", err)
 	}
 	if !strings.Contains(string(readFile(t, filepath.Join(dir, ".go42x/go42x.yaml"))),
-		"# yaml-language-server: $schema=go42x.schema.json") {
-		t.Fatal("default configuration must reference the adjacent schema")
+		"# yaml-language-server: $schema="+version.SourceURL("assets/schemas/go42x.schema.yaml")) {
+		t.Fatal("default configuration must reference the remote editor schema")
 	}
 	templateFS, err := assets.AgentEnvTemplates()
 	if err != nil {
@@ -111,6 +111,9 @@ func TestInitExtractsTemplatesAndPreservesCustomFiles(t *testing.T) {
 		if err != nil {
 			return err
 		}
+		if path == configFile {
+			want = pinConfigSchemaURL(want)
+		}
 		if !bytes.Equal(readFile(t, target), want) {
 			t.Errorf("embedded template differs: %s", relative)
 		}
@@ -123,10 +126,8 @@ func TestInitExtractsTemplatesAndPreservesCustomFiles(t *testing.T) {
 	if !bytes.HasPrefix(before, []byte("existing-entry\n")) {
 		t.Fatal("existing gitignore changed")
 	}
-	for _, entry := range ignoreFiles {
-		if strings.Count(string(before), "\n"+entry+"\n") != 1 {
-			t.Errorf("ignore entry missing or duplicated: %s", entry)
-		}
+	if strings.Count(string(before), assets.AgentEnvGitIgnore()) != 1 {
+		t.Fatal("bundled gitignore block missing or duplicated")
 	}
 	writeFile(t, filepath.Join(dir, ".go42x/go42x.yaml"), "custom configuration")
 	customTemplate := filepath.Join(dir, ".go42x/agents.tpl.md")
@@ -141,8 +142,8 @@ func TestInitExtractsTemplatesAndPreservesCustomFiles(t *testing.T) {
 	if string(readFile(t, customTemplate)) != "custom instructions" {
 		t.Fatal("existing template overwritten")
 	}
-	if string(readFile(t, schemaPath)) != config.Schema() {
-		t.Fatal("outdated schema was not refreshed")
+	if string(readFile(t, schemaPath)) != "outdated schema" {
+		t.Fatal("existing editor schema was changed")
 	}
 	if !bytes.Equal(before, readFile(t, filepath.Join(dir, ".gitignore"))) {
 		t.Fatal("repeated init changed gitignore")
@@ -153,7 +154,7 @@ func TestInitExtractsTemplatesAndPreservesCustomFiles(t *testing.T) {
 }
 
 func TestInitFilesystemErrors(t *testing.T) {
-	for _, stage := range []string{"configuration", "templates", "schema", "gitignore"} {
+	for _, stage := range []string{"configuration", "templates", "gitignore"} {
 		t.Run(stage, func(t *testing.T) {
 			dir := t.TempDir()
 			want := ""
@@ -164,11 +165,6 @@ func TestInitFilesystemErrors(t *testing.T) {
 			case "templates":
 				writeFile(t, filepath.Join(dir, ".go42x/chunks"), "blocked")
 				want = "extract template"
-			case "schema":
-				if err := os.MkdirAll(filepath.Join(dir, ".go42x/go42x.schema.json"), 0755); err != nil {
-					t.Fatal(err)
-				}
-				want = "update configuration schema"
 			case "gitignore":
 				if err := os.Mkdir(filepath.Join(dir, ".gitignore"), 0755); err != nil {
 					t.Fatal(err)
@@ -317,9 +313,7 @@ func TestGenerateErrors(t *testing.T) {
 	}
 }
 
-func TestUpdateReplacesBundledSourcesAndRegenerates(t *testing.T) {
-	t.Setenv("PATH", "")
-	t.Setenv("GITHUB_ACTIONS", "false")
+func TestUpdateReplacesOnlyBundledSources(t *testing.T) {
 	dir := t.TempDir()
 	service := testService(t, dir, false)
 	if err := service.Init(t.Context()); err != nil {
@@ -328,17 +322,26 @@ func TestUpdateReplacesBundledSourcesAndRegenerates(t *testing.T) {
 	local := "project:\n  name: local-project\nproviders:\n  claude:\n    enabled: true\n" +
 		"    agents: [agents/reviewer.tpl.md]\n"
 	writeFile(t, filepath.Join(dir, ".go42x", config.LocalConfigFile), local)
-	customChunk := "Custom project instructions."
-	writeFile(t, filepath.Join(dir, ".go42x/chunks/900-custom.tpl.md"), customChunk)
-	writeFile(t, filepath.Join(dir, ".go42x/agents/reviewer.tpl.md"), "Review {{ .project.name }}")
-	writeFile(t, filepath.Join(dir, ".agents/plugins/project-tools/plugin.json"), "disabled provider")
 	originals := map[string]string{
+		".gitignore":                         "before\n# go42x -- START\nobsolete\n# go42x -- END\nafter\n",
 		".go42x/go42x.yaml":                  "invalid old configuration: [",
 		".go42x/agents.tpl.md":               "{{ if }}",
 		".go42x/chunks/100-operation.tpl.md": "old operation instructions",
-		".go42x/go42x.schema.json":           "old schema",
-		"AGENTS.md":                          "old shared instructions",
-		".claude/settings.local.json":        "{\"user_setting\":\"preserved\"}",
+	}
+	preserved := map[string]string{
+		".go42x/go42x.schema.json":                  "old schema",
+		".go42x/go42x.local.yaml":                   local,
+		".go42x/chunks/900-custom.tpl.md":           "{{ if }}",
+		".go42x/agents/reviewer.tpl.md":             "Review {{ .project.name }}",
+		"AGENTS.md":                                 "old shared instructions",
+		".claude/settings.local.json":               "invalid existing settings: {",
+		".claude/agents/reviewer.md":                "old reviewer instructions",
+		".codex/config.toml":                        "invalid existing settings: [",
+		".mcp.json":                                 "old MCP configuration",
+		".agents/plugins/project-tools/plugin.json": "old plugin",
+	}
+	for path, content := range preserved {
+		writeFile(t, filepath.Join(dir, filepath.FromSlash(path)), content)
 	}
 	for path, content := range originals {
 		writeFile(t, filepath.Join(dir, filepath.FromSlash(path)), content)
@@ -346,9 +349,6 @@ func TestUpdateReplacesBundledSourcesAndRegenerates(t *testing.T) {
 	result, err := service.Update(t.Context())
 	if err != nil {
 		t.Fatal(err)
-	}
-	if result.Sources != 5 || result.Outputs == 0 || result.Applied != result.Sources+result.Outputs {
-		t.Fatalf("update result = %+v", result)
 	}
 	for path, want := range originals {
 		got := string(readFile(t, filepath.Join(result.BackupDir, "files", filepath.FromSlash(path))))
@@ -360,13 +360,18 @@ func TestUpdateReplacesBundledSourcesAndRegenerates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	wantSources := 1 // The managed .gitignore is an additional source.
 	err = fs.WalkDir(bundle, ".", func(path string, entry fs.DirEntry, err error) error {
 		if err != nil || entry.IsDir() {
 			return err
 		}
+		wantSources++
 		want, err := fs.ReadFile(bundle, path)
 		if err != nil {
 			return err
+		}
+		if path == configFile {
+			want = pinConfigSchemaURL(want)
 		}
 		if got := readFile(t, filepath.Join(dir, ".go42x", filepath.FromSlash(path))); string(got) != string(want) {
 			t.Errorf("bundled source was not replaced: %s", path)
@@ -376,34 +381,28 @@ func TestUpdateReplacesBundledSourcesAndRegenerates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(readFile(t, filepath.Join(dir, ".go42x/go42x.schema.json"))) != config.Schema() {
-		t.Fatal("schema was not refreshed")
+	if result.Sources != wantSources || result.Applied != result.Sources {
+		t.Fatalf("update result = %+v, want %d sources", result, wantSources)
 	}
-	instructions := string(readFile(t, filepath.Join(dir, "AGENTS.md")))
-	if !strings.Contains(instructions, "local-project") || !strings.Contains(instructions, customChunk) ||
-		strings.Contains(instructions, "agentenv-update-") {
-		t.Fatalf("instructions did not use the candidate sources and real project context: %s", instructions)
+	if got := string(
+		readFile(t, filepath.Join(dir, ".gitignore")),
+	); got != "before\n"+assets.AgentEnvGitIgnore()+"after\n" {
+		t.Fatalf("managed gitignore block was not refreshed: %s", got)
 	}
-	for path, want := range map[string]string{
-		".go42x/go42x.local.yaml":                   local,
-		".go42x/chunks/900-custom.tpl.md":           customChunk,
-		".claude/agents/reviewer.md":                "Review local-project",
-		".agents/plugins/project-tools/plugin.json": "disabled provider",
-	} {
+	for path, want := range preserved {
 		if got := string(readFile(t, filepath.Join(dir, filepath.FromSlash(path)))); got != want {
 			t.Errorf("%s = %q, want %q", path, got, want)
+		}
+		if _, err := os.Stat(filepath.Join(result.BackupDir, "files", filepath.FromSlash(path))); !os.IsNotExist(err) {
+			t.Errorf("update backed up an unchanged custom file or generated output %s: %v", path, err)
 		}
 	}
 	if _, err := os.Stat(filepath.Join(dir, "CLAUDE.md")); !os.IsNotExist(err) {
 		t.Fatalf("update generated obsolete Claude wrapper: %v", err)
 	}
-	settingsPath := filepath.Join(dir, ".claude/settings.local.json")
-	settings := readFile(t, settingsPath)
-	var decoded map[string]any
-	if err := json.Unmarshal(settings, &decoded); err != nil || decoded["user_setting"] != "preserved" {
-		t.Fatalf("provider settings merge changed: %s, %v", settings, err)
-	}
-	oldInfo, err := os.Stat(settingsPath)
+	configPath := filepath.Join(dir, ".go42x/go42x.yaml")
+	updatedConfig := readFile(t, configPath)
+	oldInfo, err := os.Stat(configPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -411,45 +410,47 @@ func TestUpdateReplacesBundledSourcesAndRegenerates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	newInfo, err := os.Stat(settingsPath)
+	newInfo, err := os.Stat(configPath)
 	if err != nil || os.SameFile(oldInfo, newInfo) {
-		t.Fatalf("unchanged provider settings were not replaced: %v", err)
+		t.Fatalf("unchanged bundled source was not replaced: %v", err)
 	}
 	if repeated.BackupDir == result.BackupDir {
 		t.Fatal("repeated update reused an earlier backup")
 	}
 	if got := readFile(
 		t,
-		filepath.Join(repeated.BackupDir, "files/.claude/settings.local.json"),
-	); string(
+		filepath.Join(repeated.BackupDir, "files/.go42x/go42x.yaml"),
+	); !bytes.Equal(
 		got,
-	) != string(
-		settings,
+		updatedConfig,
 	) {
-		t.Fatal("repeated update did not back up unchanged settings")
+		t.Fatal("repeated update did not back up unchanged bundled configuration")
 	}
 	if _, err := os.Stat(filepath.Join(dir, ".build")); !os.IsNotExist(err) {
 		t.Fatalf("temporary staging artifacts remain: %v", err)
 	}
 }
 
-func TestUpdatePreservesExternalTemplateReferences(t *testing.T) {
-	t.Setenv("PATH", "")
+func TestUpdateDoesNotReadTemplatesOrUseBuildDirectory(t *testing.T) {
 	dir := t.TempDir()
 	service := testService(t, dir, false)
 	if err := service.Init(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	writeFile(t, filepath.Join(dir, "shared/main.tpl.md"), "External {{ .project.name }}\n{{ .chunks }}")
-	writeFile(t, filepath.Join(dir, "shared/chunks/custom.tpl.md"), "External chunk")
+	writeFile(t, filepath.Join(dir, ".build"), "not a directory")
 	writeFile(t, filepath.Join(dir, ".go42x/go42x.local.yaml"),
-		"context:\n  template: ../shared/main.tpl.md\n  chunks-dir: ../shared/chunks\n")
+		"context:\n  template: ../missing/main.tpl.md\n  chunks-dir: ../missing/chunks\n"+
+			"providers:\n  claude:\n    enabled: true\n    agents: [../missing/reviewer.tpl.md]\n")
 	if _, err := service.Update(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	got := string(readFile(t, filepath.Join(dir, "AGENTS.md")))
-	if !strings.Contains(got, "External go42") || !strings.Contains(got, "External chunk") {
-		t.Fatalf("external paths resolved against staging: %s", got)
+	if got := string(readFile(t, filepath.Join(dir, ".build"))); got != "not a directory" {
+		t.Fatalf("update changed .build: %s", got)
+	}
+	for _, path := range []string{"AGENTS.md", ".claude", ".mcp.json"} {
+		if _, err := os.Stat(filepath.Join(dir, path)); !os.IsNotExist(err) {
+			t.Errorf("update generated %s: %v", path, err)
+		}
 	}
 }
 

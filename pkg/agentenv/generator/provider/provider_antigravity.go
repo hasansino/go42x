@@ -9,8 +9,8 @@ import (
 	"regexp"
 	"slices"
 
-	"github.com/go42-dev/go42x/pkg/agentenv/config"
-	"github.com/go42-dev/go42x/pkg/agentenv/generator/output"
+	"github.com/go42-dev/go42x/pkg/config"
+	"github.com/go42-dev/go42x/pkg/fspatch"
 )
 
 const (
@@ -58,14 +58,14 @@ func NewAntigravityProvider(
 	}
 }
 
-func (p *AntigravityProvider) Prepare(plan *output.Plan, _ map[string]any, _ config.Provider) error {
+func (p *AntigravityProvider) Prepare(plan *fspatch.Plan, _ map[string]any, _ config.Provider) error {
 	if err := p.prepareConfigFiles(plan); err != nil {
 		return fmt.Errorf("failed to prepare config files: %w", err)
 	}
 	return nil
 }
 
-func (p *AntigravityProvider) prepareConfigFiles(plan *output.Plan) error {
+func (p *AntigravityProvider) prepareConfigFiles(plan *fspatch.Plan) error {
 	pluginDir := filepath.Join(p.outputDir, AntigravityPluginDir)
 	manifest := AntigravityPluginManifest{
 		Schema:      "https://antigravity.google/schemas/v1/plugin.json",

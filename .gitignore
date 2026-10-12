@@ -10,7 +10,7 @@
 .tools/
 .task/
 
-# go42x generated files
+# go42x -- START
 .go42x/go42x.local.yaml
 .go42x/kwb/
 .go42x/backups/
@@ -21,3 +21,4 @@ AGENTS.md
 .agents/plugins/project-tools/
 .crush/
 .crush.json
+# go42x -- END

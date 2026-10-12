@@ -1,0 +1,12 @@
+# go42x -- START
+.go42x/go42x.local.yaml
+.go42x/kwb/
+.go42x/backups/
+.mcp.json
+.claude/
+.codex/
+.agents/plugins/project-tools/
+.crush/
+.crush.json
+AGENTS.md
+# go42x -- END

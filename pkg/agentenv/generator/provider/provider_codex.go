@@ -12,8 +12,8 @@ import (
 
 	"github.com/pelletier/go-toml/v2"
 
-	"github.com/go42-dev/go42x/pkg/agentenv/config"
-	"github.com/go42-dev/go42x/pkg/agentenv/generator/output"
+	"github.com/go42-dev/go42x/pkg/config"
+	"github.com/go42-dev/go42x/pkg/fspatch"
 )
 
 const (
@@ -52,7 +52,7 @@ func NewCodexProvider(
 	}
 }
 
-func (p *CodexProvider) Prepare(plan *output.Plan, _ map[string]any, providerConfig config.Provider) error {
+func (p *CodexProvider) Prepare(plan *fspatch.Plan, _ map[string]any, providerConfig config.Provider) error {
 	if err := p.prepareConfigFiles(plan, providerConfig); err != nil {
 		return fmt.Errorf("failed to prepare config files: %w", err)
 	}
@@ -60,7 +60,7 @@ func (p *CodexProvider) Prepare(plan *output.Plan, _ map[string]any, providerCon
 	return nil
 }
 
-func (p *CodexProvider) prepareConfigFiles(plan *output.Plan, providerConfig config.Provider) error {
+func (p *CodexProvider) prepareConfigFiles(plan *fspatch.Plan, providerConfig config.Provider) error {
 	servers := make(map[string]CodexMCPServer)
 	for _, name := range slices.Sorted(maps.Keys(p.config.MCP)) {
 		server := p.config.MCP[name]
@@ -114,7 +114,7 @@ func (p *CodexProvider) prepareConfigFiles(plan *output.Plan, providerConfig con
 	if exists && bytes.Equal(before, content) {
 		content = previous
 	}
-	if err := plan.Write(path, content, output.Settings, false); err != nil {
+	if err := plan.Write(path, content, fspatch.Settings, false); err != nil {
 		return fmt.Errorf("failed to prepare %s: %w", path, err)
 	}
 	return nil

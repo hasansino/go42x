@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go42-dev/go42x/pkg/agentenv/config"
+	"github.com/go42-dev/go42x/pkg/config"
 )
 
 func TestCollectorMetadata(t *testing.T) {

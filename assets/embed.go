@@ -6,18 +6,27 @@ import (
 	"io/fs"
 )
 
-//go:embed all:agentenv/template/*
+//go:embed agentenv/go42x.yaml agentenv/agents.tpl.md
+//go:embed all:agentenv/chunks all:agentenv/upstream
 var agentEnvTemplates embed.FS
 
-//go:embed agentenv/go42x.schema.json
-var agentEnvSchema string
-
-// AgentEnvTemplates returns the bundled files rooted at the template directory.
+// AgentEnvTemplates returns the bundled sources installed into .go42x.
 func AgentEnvTemplates() (fs.FS, error) {
-	return fs.Sub(agentEnvTemplates, "agentenv/template")
+	return fs.Sub(agentEnvTemplates, "agentenv")
 }
 
-// AgentEnvSchema returns the JSON schema for go42x.yaml.
-func AgentEnvSchema() string {
-	return agentEnvSchema
+//go:embed agentenv/.gitignore.tpl
+var agentEnvGitIgnore string
+
+// AgentEnvGitIgnore returns the managed .gitignore block for agentenv.
+func AgentEnvGitIgnore() string {
+	return agentEnvGitIgnore
+}
+
+//go:embed vendoring/.vendor.yaml.tpl
+var vendorManifestTemplate string
+
+// VendorManifestTemplate returns the starter template for .vendor.yaml.
+func VendorManifestTemplate() string {
+	return vendorManifestTemplate
 }

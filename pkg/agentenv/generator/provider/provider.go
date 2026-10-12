@@ -3,7 +3,7 @@ package provider
 import (
 	"log/slog"
 
-	"github.com/go42-dev/go42x/pkg/agentenv/config"
+	"github.com/go42-dev/go42x/pkg/config"
 )
 
 const AgentsFile = "AGENTS.md"

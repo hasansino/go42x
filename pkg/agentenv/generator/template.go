@@ -9,8 +9,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/go42-dev/go42x/pkg/agentenv/config"
 	"github.com/go42-dev/go42x/pkg/agentenv/generator/provider"
+	"github.com/go42-dev/go42x/pkg/config"
 )
 
 const chunksPlaceholder = "{{ .chunks }}"

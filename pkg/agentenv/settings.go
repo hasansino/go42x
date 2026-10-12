@@ -3,12 +3,11 @@ package agentenv
 import (
 	"fmt"
 
-	"github.com/go42-dev/go42x/pkg/agentenv/config"
+	"github.com/go42-dev/go42x/pkg/config"
 )
 
 type Settings struct {
-	Clean bool
-	// Providers is an exact selection; nil uses project and local configuration.
+	Clean     bool
 	Providers []string
 }
 
