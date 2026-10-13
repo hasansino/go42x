@@ -15,14 +15,14 @@ feature behavior, and result formatting with their owners. Follow
 
 ## Command files and ownership
 
-| Location                                     | Responsibility                                                    |
-| -------------------------------------------- | ----------------------------------------------------------------- |
-| `internal/cmd/<feature>/cmd.go`               | Command group, shared flags, and subcommand registration            |
-| `internal/cmd/<feature>/<operation>.go`       | Command definition, typed settings, and its execution helper        |
-| `internal/<feature>/settings.go`              | Feature settings, defaults, validation, and settings resolution     |
-| `internal/<feature>/service.go`               | Feature operations and their result types                          |
-| `internal/<feature>/adapters/cli/report.go`   | Text rendering and translation of results into CLI reports         |
-| `internal/cmdutil/`                          | Shared CLI infrastructure, streams, reporting, and error handling   |
+| Location                                    | Responsibility                                                    |
+| ------------------------------------------- | ----------------------------------------------------------------- |
+| `internal/cmd/<feature>/cmd.go`             | Command group, shared flags, and subcommand registration          |
+| `internal/cmd/<feature>/<operation>.go`     | Command definition, typed settings, and its execution helper      |
+| `internal/<feature>/settings.go`            | Feature settings, defaults, validation, and settings resolution   |
+| `internal/<feature>/service.go`             | Feature operations and their result types                         |
+| `internal/<feature>/adapters/cli/report.go` | Text rendering and translation of results into CLI reports        |
+| `internal/cmdutil/`                         | Shared CLI infrastructure, streams, reporting, and error handling |
 
 - Keep a command constructor and its matching execution helper in the same file.
   For example, `newGenerateCommand` and `runGenerateCommand` belong in `generate.go`.
@@ -48,31 +48,31 @@ the root command binds the selected command's flags to Viper:
 
 ```go
 const (
-	cleanFlag = "clean"
-	jsonFlag  = "json"
+    cleanFlag = "clean"
+    jsonFlag  = "json"
 )
 
 func newGenerateCommand(f *cmdutil.Factory) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "generate",
-		Short: "Generate agent configuration",
-		Args:  cobra.NoArgs,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			settings := &agentenv.Settings{
-				Clean: viper.GetBool(cleanFlag),
-				JSON:  viper.GetBool(jsonFlag),
-			}
+    cmd := &cobra.Command{
+        Use:   "generate",
+        Short: "Generate agent configuration",
+        Args:  cobra.NoArgs,
+        RunE: func(_ *cobra.Command, _ []string) error {
+            settings := &agentenv.Settings{
+                Clean: viper.GetBool(cleanFlag),
+                JSON:  viper.GetBool(jsonFlag),
+            }
 
-			if err := settings.Validate(); err != nil {
-				return cmdutil.UsageError(err)
-			}
+            if err := settings.Validate(); err != nil {
+                return cmdutil.UsageError(err)
+            }
 
-			return runGenerateCommand(f, settings)
-		},
-	}
+            return runGenerateCommand(f, settings)
+        },
+    }
 
-	cmd.Flags().Bool(cleanFlag, false, "regenerate owned instruction files")
-	return cmd
+    cmd.Flags().Bool(cleanFlag, false, "regenerate owned instruction files")
+    return cmd
 }
 ```
 
@@ -101,21 +101,21 @@ The execution helper connects those responsibilities:
 
 ```go
 func runGenerateCommand(f *cmdutil.Factory, settings *agentenv.Settings) error {
-	service, err := agentenv.NewAgentEnvService(
-		settings,
-		agentenv.WithLogger(slog.Default()),
-	)
-	if err != nil {
-		return cli.ReportGenerate(
-			f.Output(),
-			settings,
-			nil,
-			fmt.Errorf("failed to initialize agentenv service: %w", err),
-		)
-	}
+    service, err := agentenv.NewAgentEnvService(
+        settings,
+        agentenv.WithLogger(slog.Default()),
+    )
+    if err != nil {
+        return cli.ReportGenerate(
+            f.Output(),
+            settings,
+            nil,
+            fmt.Errorf("failed to initialize agentenv service: %w", err),
+        )
+    }
 
-	result, err := service.Generate(f.Context())
-	return cli.ReportGenerate(f.Output(), settings, result, err)
+    result, err := service.Generate(f.Context())
+    return cli.ReportGenerate(f.Output(), settings, result, err)
 }
 ```
 
@@ -133,25 +133,25 @@ make a failed report successful.
 
 ```go
 func ReportGenerate(
-	output io.Writer,
-	settings *agentenv.Settings,
-	result *agentenv.GenerateResult,
-	runErr error,
+    output io.Writer,
+    settings *agentenv.Settings,
+    result *agentenv.GenerateResult,
+    runErr error,
 ) error {
-	var text func(io.Writer) error
-	if !settings.JSON {
-		text = func(w io.Writer) error {
-			if runErr != nil {
-				return nil
-			}
+    var text func(io.Writer) error
+    if !settings.JSON {
+        text = func(w io.Writer) error {
+            if runErr != nil {
+                return nil
+            }
 
-			_, err := fmt.Fprintf(w,
-				"Generated agentenv; %d file changes applied.\n", len(result.Changes))
-			return err
-		}
-	}
+            _, err := fmt.Fprintf(w,
+                "Generated agentenv; %d file changes applied.\n", len(result.Changes))
+            return err
+        }
+    }
 
-	return cmdutil.Report(output, result, runErr, text)
+    return cmdutil.Report(output, result, runErr, text)
 }
 ```
 
@@ -184,14 +184,14 @@ operation's result:
 
 ```go
 func runBuildCommand(f *cmdutil.Factory, settings *kwb.Settings) error {
-	service, err := kwb.NewService(settings, kwb.WithLogger(slog.Default()))
-	if err != nil {
-		return kwbcli.ReportBuild(f.Output(), settings, nil, err)
-	}
+    service, err := kwb.NewService(settings, kwb.WithLogger(slog.Default()))
+    if err != nil {
+        return kwbcli.ReportBuild(f.Output(), settings, nil, err)
+    }
 
-	result, err := service.BuildIndex(f.Context(), settings.RootPath)
-	err = errors.Join(err, service.Close())
-	return kwbcli.ReportBuild(f.Output(), settings, &result, err)
+    result, err := service.BuildIndex(f.Context(), settings.RootPath)
+    err = errors.Join(err, service.Close())
+    return kwbcli.ReportBuild(f.Output(), settings, &result, err)
 }
 ```
 
