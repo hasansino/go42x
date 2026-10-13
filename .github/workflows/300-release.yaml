@@ -197,6 +197,9 @@ jobs:
           owner: ${{ github.repository_owner }}
           repositories: ${{ github.event.repository.name }}
           permission-contents: write
+          # Creating a release tag can require permission to modify workflows at its target commit.
+          # @see https://docs.github.com/en/rest/releases/releases#create-a-release
+          permission-workflows: write
       - name: 'Verify release App identity'
         env:
           ACTUAL_APP_SLUG: ${{ steps.release-app.outputs.app-slug }}
