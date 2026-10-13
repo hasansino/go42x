@@ -3,6 +3,7 @@ module github.com/go42-dev/go42x
 go 1.27
 
 require (
+	github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.2
 	github.com/blevesearch/bleve/v2 v2.6.1
 	github.com/go-git/go-git/v5 v5.19.2
 	github.com/gofrs/flock v0.12.1
@@ -21,6 +22,7 @@ require (
 )
 
 require (
+	github.com/JohannesKaufmann/dom v0.3.1 // indirect
 	github.com/RoaringBitmap/roaring/v2 v2.14.5 // indirect
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
 	github.com/bits-and-blooms/bitset v1.24.2 // indirect

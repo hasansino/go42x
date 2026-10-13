@@ -91,6 +91,18 @@ properties:
       description:
         type: string
         description: Project description
+      repository:
+        type: string
+        description: Canonical project repository, independent of the checkout's Git remote
+        examples:
+          - github.com/go42-dev/go42
+      documentation-entrypoint:
+        type: string
+        description: Project-relative Markdown documentation entrypoint; omitted or empty uses the default
+        default: docs/README.md
+        examples:
+          - docs/README.md
+          - handbook/index.md
       tags:
         type: array
         description: Project tags

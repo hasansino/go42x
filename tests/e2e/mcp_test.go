@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -12,29 +14,77 @@ import (
 
 func TestMCPStdioSession(t *testing.T) {
 	t.Parallel()
-	runMCPStdioSession(t, false)
+	for _, tt := range []mcpSessionConfig{
+		{name: "default without configuration"},
+		{name: "project configuration", entrypoint: "handbook/start.md"},
+		{name: "local override", entrypoint: "handbook/shared.md", localEntrypoint: "team/start.markdown"},
+		{name: "indexed project root", entrypoint: "handbook/start.md", indexedRoot: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			runMCPStdioSession(t, false, tt)
+		})
+	}
 }
 
 func TestMCPReadTimeouts(t *testing.T) {
 	t.Parallel()
-	runMCPStdioSession(t, true)
+	runMCPStdioSession(t, true, mcpSessionConfig{})
 }
 
-func runMCPStdioSession(t *testing.T, expectTimeout bool) {
+type mcpSessionConfig struct {
+	name, entrypoint, localEntrypoint string
+	indexedRoot                       bool
+}
+
+func TestMCPDocumentationEntrypointFlagRemoved(t *testing.T) {
+	t.Parallel()
+	p := newProject(t)
+	result := p.run(t, 2, "mcp", "--docs-entrypoint=handbook/start.md")
+	if !strings.Contains(result.stderr, "unknown flag: --docs-entrypoint") {
+		t.Fatalf("removed flag still accepted: %+v", result)
+	}
+}
+
+func runMCPStdioSession(t *testing.T, expectTimeout bool, config mcpSessionConfig) {
 	t.Helper()
 	p := newProject(t)
 	p.write(t, "README.md", "---\nid: overview\ntitle: Local project\n---\n# Local project\nE2E example.\n")
+	const projectConfig = `version: "1.0"
+project: {name: example, documentation-entrypoint: %s}
+context: {template: agents.tpl.md}
+providers: {codex: {enabled: false}}
+`
+	entrypoint := "docs/README.md"
+	wantFiles := 3
+	if config.entrypoint != "" {
+		p.write(t, ".go42x/go42x.yaml", fmt.Sprintf(projectConfig, config.entrypoint))
+		entrypoint = config.entrypoint
+		wantFiles++
+	}
+	if config.localEntrypoint != "" {
+		p.write(t, ".go42x/go42x.local.yaml", "project: {documentation-entrypoint: "+config.localEntrypoint+"}\n")
+		entrypoint = config.localEntrypoint
+	}
+	p.write(t, entrypoint, "# Project documentation\n")
 	p.run(t, 0, "kwb", "build")
 	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 	defer cancel()
-	args := []string{"mcp", "--root", p.root, "--log-level=debug"}
-	p.env = append(p.env, "GO42X_CONTEXT_DOC=missing-env-guidance")
+	args := []string{"mcp", "--log-level=debug"}
+	if config.indexedRoot {
+		args = append(args, "--index", filepath.Join(p.root, ".go42x/kwb/index"))
+	} else {
+		args = append(args, "--root", p.root)
+	}
+	p.env = append(p.env, "GO42X_CONTEXT_DOC=missing-env-guidance", "GO42X_DOCS_ENTRYPOINT=ignored.md")
 	args = append(args, "--context-doc=overview")
 	if expectTimeout {
 		args = append(args, "--search-timeout=1ns")
 	}
 	cmd := p.command(ctx, args...)
-	cmd.Dir = t.TempDir()
+	other := newProject(t)
+	other.write(t, ".go42x/go42x.yaml", fmt.Sprintf(projectConfig, "wrong-project.md"))
+	cmd.Dir = other.root
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatal(err)
@@ -163,7 +213,7 @@ func runMCPStdioSession(t *testing.T, expectTimeout bool) {
 		if err := json.Unmarshal([]byte(called.Content[0].Text), &stats); err != nil {
 			t.Fatal(err)
 		}
-		if stats.DocumentCount != 2 || stats.ChunkCount < 2 || stats.Generation == "" {
+		if stats.DocumentCount != wantFiles || stats.ChunkCount < wantFiles || stats.Generation == "" {
 			t.Fatalf("kwb_stats does not describe the indexed project: %+v", stats)
 		}
 		request(
@@ -176,6 +226,21 @@ func runMCPStdioSession(t *testing.T, expectTimeout bool) {
 			!strings.Contains(called.Content[0].Text, "project_guidance") ||
 			strings.Contains(called.Content[0].Text, "guidance_unavailable") {
 			t.Fatalf("configured guidance or flag precedence lost: %+v", called)
+		}
+		var result struct {
+			Items       []struct{ Path, Reason string } `json:"items"`
+			Diagnostics []struct{ Code string }         `json:"diagnostics"`
+		}
+		if err := json.Unmarshal([]byte(called.Content[0].Text), &result); err != nil {
+			t.Fatal(err)
+		}
+		if len(result.Items) == 0 || result.Items[0].Path != entrypoint || result.Items[0].Reason != "bootstrap" {
+			t.Fatalf("MCP ignored the project's documentation entrypoint: %+v", result.Items)
+		}
+		for _, diagnostic := range result.Diagnostics {
+			if diagnostic.Code == "docs_entrypoint_missing" {
+				t.Fatalf("MCP did not load the configured entrypoint: %+v", result.Diagnostics)
+			}
 		}
 	}
 	if err := stdin.Close(); err != nil {

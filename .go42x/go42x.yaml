@@ -8,13 +8,12 @@ project:
   name: go42x
   language: go
   description: 'Helper tool for go42 project.'
+  repository: github.com/go42-dev/go42x
+  documentation-entrypoint: docs/README.md
   tags:
     - go42x
     - golang
     - cli
-  metadata:
-    repository: github.com/go42-dev/go42x
-    documentation-entrypoint: docs/README.md
 
 # Environment variable names whose values should appear in the shared context.
 env: []

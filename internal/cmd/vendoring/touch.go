@@ -7,10 +7,12 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/go42-dev/go42x/internal/cmdutil"
-	"github.com/go42-dev/go42x/pkg/vendoring"
+	"github.com/go42-dev/go42x/internal/vendoring"
+	"github.com/go42-dev/go42x/internal/vendoring/adapters/cli"
 )
 
 func newTouchCommand(f *cmdutil.Factory) *cobra.Command {
+	defaults := vendoring.NewSettings()
 	return &cobra.Command{
 		Use:         "touch [directory]",
 		Short:       "Create a missing vendoring manifest",
@@ -19,19 +21,30 @@ func newTouchCommand(f *cmdutil.Factory) *cobra.Command {
 		Args:        cobra.MaximumNArgs(1),
 		Annotations: map[string]string{"result-output": "true"},
 		RunE: func(_ *cobra.Command, args []string) error {
+			settings := &vendoring.Settings{
+				RootPath:     viper.GetString("root"),
+				ManifestPath: viper.GetString("manifest"),
+				LockPath:     viper.GetString("lock"),
+				TempDir:      defaults.TempDir,
+				Timeout:      defaults.Timeout,
+				JSON:         viper.GetBool("json"),
+			}
+			if err := settings.Validate(); err != nil {
+				return cmdutil.UsageError(err)
+			}
 			directory := "."
 			if len(args) == 1 {
 				directory = args[0]
 			}
 			if !filepath.IsAbs(directory) {
-				directory = filepath.Join(viper.GetString("root"), directory)
+				directory = filepath.Join(settings.RootPath, directory)
 			}
-			return runTouchCommand(f, directory, viper.GetBool("json"))
+			return runTouchCommand(f, settings, directory)
 		},
 	}
 }
 
-func runTouchCommand(f *cmdutil.Factory, directory string, asJSON bool) error {
+func runTouchCommand(f *cmdutil.Factory, settings *vendoring.Settings, directory string) error {
 	result, err := vendoring.Touch(f.Context(), directory)
-	return report(f, result, err, asJSON)
+	return cli.Report(f.Output(), settings, "touch", result, err)
 }

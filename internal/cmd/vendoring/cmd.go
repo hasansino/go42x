@@ -4,7 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/go42-dev/go42x/internal/cmdutil"
-	"github.com/go42-dev/go42x/pkg/vendoring"
+	"github.com/go42-dev/go42x/internal/vendoring"
 )
 
 func NewVendoringCommand(f *cmdutil.Factory) *cobra.Command {

@@ -12,6 +12,8 @@ project:
   name: {{ yamlValue .project.name }}
   description: {{ yamlValue .project.description }}
   language: {{ yamlValue .project.language }}
+  repository: {{ yamlValue .project.repository }}
+  documentation-entrypoint: {{ yamlValue (index .project "documentation-entrypoint") }}
   tags: {{ yamlValue .project.tags }}
   metadata: {{ yamlValue .project.metadata }}
 repository:

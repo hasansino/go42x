@@ -16,7 +16,7 @@ import (
 	"github.com/klauspost/compress/zstd"
 	"github.com/ulikunitz/xz"
 
-	"github.com/go42-dev/go42x/pkg/vendoring/source/download"
+	"github.com/go42-dev/go42x/internal/vendoring/source"
 )
 
 func tarFixture(t *testing.T, headers ...tar.Header) []byte {
@@ -53,9 +53,9 @@ func TestRejectUnsafeArchivesBeforeExtraction(t *testing.T) {
 			)
 			defer server.Close()
 			workspace := t.TempDir()
-			if _, _, err := download.NewClient(
-				time.Second,
-			).FetchURL(t.Context(), server.URL+"/source.tar", "", "", workspace, ""); err == nil {
+			if _, _, err := source.FetchURL(
+				t.Context(), source.NewHTTPClient(time.Second), server.URL+"/source.tar", "", "", workspace, "",
+			); err == nil {
 				t.Fatal("unsafe archive accepted")
 			}
 			entries, err := os.ReadDir(filepath.Join(workspace, "files"))
@@ -105,9 +105,9 @@ func TestCompressedFilesRetainURLBasename(t *testing.T) {
 				http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(b.Bytes()) }),
 			)
 			defer server.Close()
-			root, hash, err := download.NewClient(
-				time.Second,
-			).FetchURL(t.Context(), server.URL+"/file.txt."+format, "", "", t.TempDir(), "")
+			root, hash, err := source.FetchURL(
+				t.Context(), source.NewHTTPClient(time.Second), server.URL+"/file.txt."+format, "", "", t.TempDir(), "",
+			)
 			if err != nil {
 				t.Fatal(err)
 			}

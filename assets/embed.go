@@ -7,6 +7,7 @@ import (
 )
 
 //go:embed agentenv/go42x.yaml agentenv/agents.tpl.md
+//go:embed agentenv/.vendor.yaml agentenv/.vendor.lock.yaml
 //go:embed all:agentenv/chunks all:agentenv/upstream
 var agentEnvTemplates embed.FS
 

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/go42-dev/go42x/pkg/kwb"
+	"github.com/go42-dev/go42x/internal/kwb"
 )
 
 func TestKnowledgeBaseFreshnessCLI(t *testing.T) {

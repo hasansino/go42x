@@ -6,46 +6,65 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/go42-dev/go42x/internal/buildinfo"
 	"github.com/go42-dev/go42x/internal/cmdutil"
-	"github.com/go42-dev/go42x/internal/version"
-	"github.com/go42-dev/go42x/pkg/vendoring"
+	"github.com/go42-dev/go42x/internal/vendoring"
+	"github.com/go42-dev/go42x/internal/vendoring/adapters/cli"
 )
 
 func newSyncCommand(f *cmdutil.Factory) *cobra.Command {
+	defaults := vendoring.NewSettings()
 	cmd := &cobra.Command{
 		Use:         "sync",
 		Short:       "Restore files from locked sources",
 		Args:        cobra.NoArgs,
 		Annotations: map[string]string{"result-output": "true"},
 		RunE: func(_ *cobra.Command, _ []string) error {
-			settings := commandSettings()
-			options := vendoring.OperationOptions{DryRun: viper.GetBool("dry-run"), Force: viper.GetBool("force")}
-			asJSON := viper.GetBool("json")
-			if err := validateCommandSettings(f, settings, "sync", asJSON); err != nil {
-				return err
+			settings := &vendoring.Settings{
+				RootPath:     viper.GetString("root"),
+				ManifestPath: viper.GetString("manifest"),
+				LockPath:     viper.GetString("lock"),
+				TempDir:      defaults.TempDir,
+				Timeout:      defaults.Timeout,
+				DryRun:       viper.GetBool("dry-run"),
+				Force:        viper.GetBool("force"),
+				JSON:         viper.GetBool("json"),
 			}
-			return runSyncCommand(f, settings, options, asJSON)
+			if err := settings.Validate(); err != nil {
+				return cmdutil.UsageError(err)
+			}
+			return runSyncCommand(f, settings)
 		},
 	}
-	cmd.Flags().Bool("dry-run", false, "preview changes without modifying destinations, lock or backups")
-	cmd.Flags().Bool("force", false, "back up and replace locally modified or conflicting targets")
+
+	cmd.Flags().Bool(
+		"dry-run", false,
+		"preview changes without modifying destinations, lock or backups")
+	cmd.Flags().Bool(
+		"force", false,
+		"back up and replace locally modified or conflicting targets")
+
 	return cmd
 }
 
-func runSyncCommand(
-	f *cmdutil.Factory,
-	settings *vendoring.Settings,
-	options vendoring.OperationOptions,
-	asJSON bool,
-) error {
+func runSyncCommand(f *cmdutil.Factory, settings *vendoring.Settings) error {
+	if err := settings.LoadProject(); err != nil {
+		return cli.Report(f.Output(), settings, "sync", nil, err)
+	}
+	if err := settings.Validate(); err != nil {
+		return cli.Report(f.Output(), settings, "sync", nil, err)
+	}
+	if err := settings.Resolve(); err != nil {
+		return cli.Report(f.Output(), settings, "sync", nil, err)
+	}
 	service, err := vendoring.NewService(
 		settings,
 		vendoring.WithLogger(slog.Default()),
-		vendoring.WithVersion(version.GetVersion()),
+		vendoring.WithVersion(buildinfo.GetVersion()),
 	)
 	if err != nil {
-		return report(f, emptyResult("sync"), err, asJSON)
+		return cli.Report(f.Output(), settings, "sync", nil, err)
 	}
-	result, err := service.Sync(f.Context(), options)
-	return report(f, result, err, asJSON)
+	result, err := service.Sync(f.Context())
+	return cli.Report(f.Output(), settings, "sync", result, err)
 }

@@ -9,11 +9,11 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/go42-dev/go42x/internal/buildinfo"
 	"github.com/go42-dev/go42x/internal/cmdutil"
-	"github.com/go42-dev/go42x/internal/version"
-	"github.com/go42-dev/go42x/pkg/kwb"
-	kwbmcp "github.com/go42-dev/go42x/pkg/kwb/adapters/mcp"
-	"github.com/go42-dev/go42x/pkg/mcpserver"
+	"github.com/go42-dev/go42x/internal/kwb"
+	kwbmcp "github.com/go42-dev/go42x/internal/kwb/adapters/mcp"
+	"github.com/go42-dev/go42x/internal/mcpserver"
 )
 
 func NewMCPCommand(f *cmdutil.Factory) *cobra.Command {
@@ -25,12 +25,11 @@ func NewMCPCommand(f *cmdutil.Factory) *cobra.Command {
 		Annotations: map[string]string{"mcp-stdio": "true"},
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			settings := &mcpserver.Settings{
-				IndexPath:      viper.GetString("index"),
-				RootPath:       viper.GetString("root"),
-				ExplicitRoot:   cmdutil.ExplicitFlag(cmd, "root"),
-				SearchTimeout:  viper.GetDuration("search-timeout"),
-				DocsEntrypoint: viper.GetString("docs-entrypoint"),
-				ContextDocs:    viper.GetStringSlice("context-doc"),
+				IndexPath:     viper.GetString("index"),
+				RootPath:      viper.GetString("root"),
+				ExplicitRoot:  cmdutil.ExplicitFlag(cmd, "root"),
+				SearchTimeout: viper.GetDuration("search-timeout"),
+				ContextDocs:   viper.GetStringSlice("context-doc"),
 			}
 			if settings.ExplicitRoot && !cmdutil.ExplicitFlag(cmd, "index") {
 				settings.IndexPath = filepath.Join(settings.RootPath, kwb.NewSettings().IndexPath)
@@ -48,8 +47,6 @@ func NewMCPCommand(f *cmdutil.Factory) *cobra.Command {
 		String("index", kwb.NewSettings().IndexPath, "knowledge-base index path")
 	cmd.Flags().
 		Duration("search-timeout", kwb.NewSettings().SearchTimeout, "maximum duration of knowledge-base reads")
-	cmd.Flags().
-		String("docs-entrypoint", kwb.DefaultEntrypoint, "project-relative documentation entrypoint")
 	cmd.Flags().
 		StringSlice("context-doc", nil, "authored document IDs to include as project guidance (at most 8)")
 
@@ -70,7 +67,7 @@ func runMCPCommand(f *cmdutil.Factory, settings *mcpserver.Settings) (retErr err
 
 	runtime, err := mcpserver.New(
 		mcpserver.WithLogger(slog.Default().With("component", "mcp-server")),
-		mcpserver.WithVersion(version.GetVersion()),
+		mcpserver.WithVersion(buildinfo.GetVersion()),
 	)
 	if err != nil {
 		return err

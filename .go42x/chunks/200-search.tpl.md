@@ -65,8 +65,9 @@ source budget when other evidence is available; unused space returns to evidence
 Use `docs_get` to read a requirement, decision, or handbook page by its authored ID.
 Documents can live anywhere in the project. YAML front matter supplies `id`,
 `title`, and optional `collection`; directory names do not determine document type.
-The documentation entrypoint defaults to `docs/README.md`; configure another path
-with `go42x mcp --docs-entrypoint`. Discovery respects `.gitignore` files.
+Configure the documentation entrypoint with `project.documentation-entrypoint` in
+`.go42x/go42x.yaml`; omitted or empty defaults to `docs/README.md`.
+Local overrides in `.go42x/go42x.local.yaml` apply. Discovery respects `.gitignore` files.
 Draft and proposed records require agreement before implementation. Acceptance
 alone does not establish delivery; retain the status and replacement chain when
 using historical records.

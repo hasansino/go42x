@@ -21,7 +21,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go42-dev/go42x/pkg/vendoring"
+	"github.com/go42-dev/go42x/internal/kwb"
+	"github.com/go42-dev/go42x/internal/vendoring"
 )
 
 func writeFixture(t *testing.T, filename string, data []byte) {
@@ -51,12 +52,31 @@ func httpManifest(remote, destination string) string {
 	)
 }
 
-func fixtureService(t *testing.T, root, manifestName string, options ...vendoring.Option) *vendoring.Service {
-	t.Helper()
+func fixtureSettings(root, manifestName string) *vendoring.Settings {
 	settings := vendoring.NewSettings()
 	settings.RootPath = root
 	settings.ManifestPath = manifestName
 	settings.TempDir = ".scratch"
+	return settings
+}
+
+func fixtureService(t *testing.T, root, manifestName string, options ...vendoring.Option) *vendoring.Service {
+	t.Helper()
+	return fixtureServiceWithSettings(t, fixtureSettings(root, manifestName), options...)
+}
+
+func fixtureServiceWithSettings(
+	t *testing.T,
+	settings *vendoring.Settings,
+	options ...vendoring.Option,
+) *vendoring.Service {
+	t.Helper()
+	if err := settings.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	if err := settings.Resolve(); err != nil {
+		t.Fatal(err)
+	}
 	service, err := vendoring.NewService(
 		settings,
 		append(
@@ -81,7 +101,7 @@ func TestHTTPBootstrapCheckSyncUpdateAndDrift(t *testing.T) {
 	manifestPath := filepath.Join(root, ".vendor.yaml")
 	writeFixture(t, manifestPath, []byte(httpManifest(server.URL+"/file.txt", "assets/file.txt")))
 	s := fixtureService(t, root, ".vendor.yaml")
-	r, err := s.Update(t.Context(), vendoring.OperationOptions{})
+	r, err := s.Update(t.Context())
 	if err != nil || !r.Valid || r.Applied != 2 {
 		t.Fatalf("bootstrap: %+v %v", r, err)
 	}
@@ -92,7 +112,7 @@ func TestHTTPBootstrapCheckSyncUpdateAndDrift(t *testing.T) {
 	if err != nil || !r.Valid || requests.Load() != before {
 		t.Fatalf("offline check: %+v %v", r, err)
 	}
-	r, err = s.Update(t.Context(), vendoring.OperationOptions{})
+	r, err = s.Update(t.Context())
 	if err != nil || r.Applied != 0 || r.BackupDir != "" || !bytes.Equal(locked, readFixture(t, lockPath)) {
 		t.Fatalf("no-op: %+v %v", r, err)
 	}
@@ -104,18 +124,18 @@ func TestHTTPBootstrapCheckSyncUpdateAndDrift(t *testing.T) {
 	if err != nil || r.Valid || len(r.Issues) != 1 {
 		t.Fatalf("missing check: %+v %v", r, err)
 	}
-	r, err = s.Sync(t.Context(), vendoring.OperationOptions{})
+	r, err = s.Sync(t.Context())
 	if err != nil || r.Applied != 1 || !bytes.Equal(locked, readFixture(t, lockPath)) {
 		t.Fatalf("locked restore: %+v %v", r, err)
 	}
 	body.Store("second")
-	if _, err := s.Sync(t.Context(), vendoring.OperationOptions{}); err == nil {
+	if _, err := s.Sync(t.Context()); err == nil {
 		t.Fatal("mutable HTTP archive accepted against lock")
 	}
 	if string(readFixture(t, file)) != "first" || !bytes.Equal(locked, readFixture(t, lockPath)) {
 		t.Fatal("failed fetch changed destinations or lock")
 	}
-	r, err = s.Update(t.Context(), vendoring.OperationOptions{})
+	r, err = s.Update(t.Context())
 	if err != nil || r.Applied != 2 {
 		t.Fatalf("upstream update: %+v %v", r, err)
 	}
@@ -127,12 +147,124 @@ func TestHTTPBootstrapCheckSyncUpdateAndDrift(t *testing.T) {
 	if err != nil || r.Valid {
 		t.Fatal("local drift was not detected")
 	}
-	if _, err := s.Update(t.Context(), vendoring.OperationOptions{}); err == nil {
+	if _, err := s.Update(t.Context()); err == nil {
 		t.Fatal("local edit overwritten without force")
 	}
-	r, err = s.Sync(t.Context(), vendoring.OperationOptions{Force: true})
+	settings := fixtureSettings(root, ".vendor.yaml")
+	settings.Force = true
+	r, err = fixtureServiceWithSettings(t, settings).Sync(t.Context())
 	if err != nil || string(readFixture(t, filepath.Join(r.BackupDir, "files", "assets", "file.txt"))) != "user edit" {
 		t.Fatalf("forced restore: %+v %v", r, err)
+	}
+}
+
+func TestVendoredHTMLIsLockedAndSearchable(t *testing.T) {
+	root := t.TempDir()
+	const original = `<h2 id="intro">Introduction</h2><p>Whole-document introduction.</p>
+<h2 id="names">Names</h2><p>Use <code>bytes.Buffer</code> and <a href="/doc/naming">the guide</a>.</p>
+<h3>Getters</h3><p>Avoid <code>GetOwner</code>.</p>
+<pre><code class="language-go">owner := obj.Owner()
+if owner != user {
+    obj.SetOwner(user)
+}</code></pre>
+<h2 id="semicolons">Semicolons</h2><p>Whole-document conclusion.</p>`
+	var body atomic.Value
+	body.Store(original)
+	var requests atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		_, _ = fmt.Fprint(w, body.Load().(string))
+	}))
+	defer server.Close()
+	manifestPath := filepath.Join(root, ".vendor.yaml")
+	manifest := fmt.Sprintf(`version: "1.0"
+dependencies:
+  guide:
+    source:
+      type: http
+      url: %s/guide.html
+    files:
+      - from: guide.html
+        to: .go42x/upstream/go/names.md
+        converter: html-to-markdown
+`, server.URL)
+	vendorSettings := fixtureSettings(root, ".vendor.yaml")
+	vendorSettings.DryRun = true
+	service := fixtureServiceWithSettings(t, vendorSettings)
+	writeFixture(
+		t,
+		manifestPath,
+		[]byte(strings.Replace(manifest, "converter: html-to-markdown", "converter: unknown", 1)),
+	)
+	if _, err := service.Update(t.Context()); err == nil ||
+		!strings.Contains(err.Error(), `unknown converter "unknown"`) {
+		t.Fatalf("unknown converter was not rejected: %v", err)
+	}
+	if requests.Load() != 0 {
+		t.Fatal("unknown converter triggered a download")
+	}
+	writeFixture(t, manifestPath, []byte(manifest))
+	result, err := service.Update(t.Context())
+	if err != nil || !result.Valid || len(result.Changes) != 2 {
+		t.Fatalf("conversion dry-run: %+v %v", result, err)
+	}
+	file := filepath.Join(root, ".go42x", "upstream", "go", "names.md")
+	if _, err := os.Stat(file); !os.IsNotExist(err) {
+		t.Fatalf("conversion dry-run created the destination: %v", err)
+	}
+	vendorSettings.DryRun = false
+	service = fixtureServiceWithSettings(t, vendorSettings)
+	result, err = service.Update(t.Context())
+	if err != nil || !result.Valid || result.Applied != 2 {
+		t.Fatalf("conversion update: %+v %v", result, err)
+	}
+	markdown := readFixture(t, file)
+	for _, want := range []string{"## Introduction", "## Names", "### Getters", "## Semicolons", "`bytes.Buffer`", "```go", "obj.SetOwner(user)", "[the guide](/doc/naming)"} {
+		if !strings.Contains(string(markdown), want) {
+			t.Errorf("converted Markdown omitted %q:\n%s", want, markdown)
+		}
+	}
+	for _, unwanted := range []string{"<h2", "<pre", "<code"} {
+		if strings.Contains(string(markdown), unwanted) {
+			t.Errorf("converted Markdown retained %q", unwanted)
+		}
+	}
+	lockPath := filepath.Join(root, ".vendor.lock.yaml")
+	locked := readFixture(t, lockPath)
+	if err := os.Remove(file); err != nil {
+		t.Fatal(err)
+	}
+	result, err = service.Sync(t.Context())
+	if err != nil || result.Applied != 1 || !bytes.Equal(markdown, readFixture(t, file)) ||
+		!bytes.Equal(locked, readFixture(t, lockPath)) {
+		t.Fatalf("reproducible conversion sync: %+v %v", result, err)
+	}
+	body.Store(strings.Replace(original, "Introduction", "Updated introduction", 1))
+	if _, err := service.Sync(t.Context()); err == nil {
+		t.Fatal("sync accepted changed source HTML")
+	}
+	if !bytes.Equal(markdown, readFixture(t, file)) || !bytes.Equal(locked, readFixture(t, lockPath)) {
+		t.Fatal("failed sync changed the destination or lock")
+	}
+
+	settings := kwb.NewSettings()
+	settings.RootPath = root
+	settings.IndexPath = filepath.Join(root, ".go42x", "kwb", "index")
+	knowledge, err := kwb.NewService(settings, kwb.WithLogger(slog.New(slog.DiscardHandler)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = knowledge.Close() })
+	if _, err := knowledge.BuildIndex(t.Context(), root); err != nil {
+		t.Fatal(err)
+	}
+	found, err := knowledge.Search(
+		t.Context(),
+		kwb.SearchOptions{Query: "Getters", PathPrefix: ".go42x/upstream/", Limit: 10},
+	)
+	if err != nil || len(found.Results) == 0 || found.Results[0].Path != ".go42x/upstream/go/names.md" ||
+		!strings.Contains(found.Results[0].Snippet, "GetOwner") {
+		t.Fatalf("converted naming section is not searchable: %+v %v", found, err)
 	}
 }
 
@@ -147,10 +279,13 @@ func TestDryRunUnownedConflictAndOwnedRemoval(t *testing.T) {
 	file := filepath.Join(root, "assets", "file.txt")
 	writeFixture(t, file, []byte("unowned"))
 	s := fixtureService(t, root, ".vendor.yaml")
-	if _, err := s.Update(t.Context(), vendoring.OperationOptions{}); err == nil {
+	if _, err := s.Update(t.Context()); err == nil {
 		t.Fatal("unowned conflict accepted")
 	}
-	r, err := s.Update(t.Context(), vendoring.OperationOptions{Force: true, DryRun: true})
+	settings := fixtureSettings(root, ".vendor.yaml")
+	settings.Force, settings.DryRun = true, true
+	s = fixtureServiceWithSettings(t, settings)
+	r, err := s.Update(t.Context())
 	if err != nil || len(r.Changes) != 2 {
 		t.Fatalf("dry-run: %+v %v", r, err)
 	}
@@ -162,7 +297,9 @@ func TestDryRunUnownedConflictAndOwnedRemoval(t *testing.T) {
 			t.Fatalf("dry-run created %s: %v", p, err)
 		}
 	}
-	r, err = s.Update(t.Context(), vendoring.OperationOptions{Force: true})
+	settings.DryRun = false
+	s = fixtureServiceWithSettings(t, settings)
+	r, err = s.Update(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,10 +308,12 @@ func TestDryRunUnownedConflictAndOwnedRemoval(t *testing.T) {
 	}
 	writeFixture(t, filepath.Join(root, "assets", "custom"), []byte("custom"))
 	writeFixture(t, manifestPath, []byte("version: \"1.0\"\ndependencies: {}\n"))
-	if _, err := s.Sync(t.Context(), vendoring.OperationOptions{}); err == nil {
+	settings.Force = false
+	s = fixtureServiceWithSettings(t, settings)
+	if _, err := s.Sync(t.Context()); err == nil {
 		t.Fatal("sync accepted changed manifest")
 	}
-	r, err = s.Update(t.Context(), vendoring.OperationOptions{})
+	r, err = s.Update(t.Context())
 	if err != nil || r.Applied != 2 {
 		t.Fatalf("owned removal: %+v %v", r, err)
 	}
@@ -205,7 +344,7 @@ func TestIdenticalUnownedFileIsAdoptedWithoutReplacement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r, err := fixtureService(t, root, ".vendor.yaml").Update(t.Context(), vendoring.OperationOptions{})
+	r, err := fixtureService(t, root, ".vendor.yaml").Update(t.Context())
 	if err != nil || r.Applied != 1 {
 		t.Fatalf("adoption: %+v %v", r, err)
 	}
@@ -227,7 +366,7 @@ func TestNestedManifestAndOwnership(t *testing.T) {
 		[]byte(httpManifest(server.URL+"/file.txt", "file.txt")),
 	)
 	s := fixtureService(t, root, "third_party/.vendor.yaml")
-	if _, err := s.Update(t.Context(), vendoring.OperationOptions{}); err != nil {
+	if _, err := s.Update(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if string(readFixture(t, filepath.Join(root, "third_party", "file.txt"))) != "data" {
@@ -241,11 +380,9 @@ func TestNestedManifestAndOwnership(t *testing.T) {
 		filepath.Join(root, ".vendor.yaml"),
 		[]byte(httpManifest(server.URL+"/file.txt", "third_party/file.txt")),
 	)
-	if _, err := fixtureService(
-		t,
-		root,
-		".vendor.yaml",
-	).Update(t.Context(), vendoring.OperationOptions{Force: true}); err == nil {
+	settings := fixtureSettings(root, ".vendor.yaml")
+	settings.Force = true
+	if _, err := fixtureServiceWithSettings(t, settings).Update(t.Context()); err == nil {
 		t.Fatal("another manifest's file was taken over")
 	}
 }
@@ -272,7 +409,7 @@ func TestApplicationFailureLeavesOldLockAndRecovery(t *testing.T) {
 		[]byte(httpManifest(server.URL+"/file.txt", "output/file.txt")),
 	)
 	s := fixtureService(t, root, ".vendor.yaml")
-	if _, err := s.Update(t.Context(), vendoring.OperationOptions{}); err != nil {
+	if _, err := s.Update(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	oldLock := readFixture(t, filepath.Join(root, ".vendor.lock.yaml"))
@@ -286,7 +423,7 @@ func TestApplicationFailureLeavesOldLockAndRecovery(t *testing.T) {
 		}
 	}})
 	s = fixtureService(t, root, ".vendor.yaml", vendoring.WithLogger(logger))
-	r, err := s.Update(t.Context(), vendoring.OperationOptions{})
+	r, err := s.Update(t.Context())
 	if err == nil || r.BackupDir == "" {
 		t.Fatalf("failure missing recovery: %+v %v", r, err)
 	}
@@ -316,7 +453,7 @@ func TestConcurrentInputEditAndCancellation(t *testing.T) {
 			}))
 			defer server.Close()
 			writeFixture(t, manifestPath, []byte(httpManifest(server.URL+"/file.txt", "file.txt")))
-			if _, err := fixtureService(t, root, ".vendor.yaml").Update(ctx, vendoring.OperationOptions{}); err == nil {
+			if _, err := fixtureService(t, root, ".vendor.yaml").Update(ctx); err == nil {
 				t.Fatal("concurrent change or cancellation was ignored")
 			}
 			for _, name := range []string{"file.txt", ".vendor.lock.yaml"} {
@@ -400,7 +537,7 @@ func TestNpmExactAndDistTagLockedSync(t *testing.T) {
 			)
 			writeFixture(t, filepath.Join(root, ".vendor.yaml"), []byte(manifest))
 			s := fixtureService(t, root, ".vendor.yaml")
-			if _, err := s.Update(t.Context(), vendoring.OperationOptions{}); err != nil {
+			if _, err := s.Update(t.Context()); err != nil {
 				t.Fatal(err)
 			}
 			lockBytes := readFixture(t, filepath.Join(root, ".vendor.lock.yaml"))
@@ -413,7 +550,7 @@ func TestNpmExactAndDistTagLockedSync(t *testing.T) {
 			if err := os.Remove(filepath.Join(root, "assets", "file.txt")); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := s.Sync(t.Context(), vendoring.OperationOptions{}); err != nil {
+			if _, err := s.Sync(t.Context()); err != nil {
 				t.Fatal(err)
 			}
 			if metadataCalls.Load() != before ||
@@ -421,7 +558,7 @@ func TestNpmExactAndDistTagLockedSync(t *testing.T) {
 				t.Fatal("sync queried registry or rewrote lock")
 			}
 			corrupt.Store(true)
-			if _, err := s.Sync(t.Context(), vendoring.OperationOptions{}); err == nil {
+			if _, err := s.Sync(t.Context()); err == nil {
 				t.Fatal("npm integrity mismatch accepted")
 			}
 		})
@@ -471,7 +608,7 @@ func TestGitBranchUpdateAndLockedRestore(t *testing.T) {
 	)
 	writeFixture(t, filepath.Join(root, ".vendor.yaml"), []byte(manifest))
 	s := fixtureService(t, root, ".vendor.yaml")
-	if _, err := s.Update(t.Context(), vendoring.OperationOptions{}); err != nil {
+	if _, err := s.Update(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	lock, err := vendoring.ParseLock(readFixture(t, filepath.Join(root, ".vendor.lock.yaml")))
@@ -484,13 +621,13 @@ func TestGitBranchUpdateAndLockedRestore(t *testing.T) {
 	if err := os.Remove(filepath.Join(root, "nested", "file.txt")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.Sync(t.Context(), vendoring.OperationOptions{}); err != nil {
+	if _, err := s.Sync(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if string(readFixture(t, filepath.Join(root, "nested", "file.txt"))) != "first" {
 		t.Fatal("sync advanced branch")
 	}
-	if _, err := s.Update(t.Context(), vendoring.OperationOptions{}); err != nil {
+	if _, err := s.Update(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if string(readFixture(t, filepath.Join(root, "nested", "file.txt"))) != "second" {
@@ -508,11 +645,9 @@ func TestControlPathsAndSymlinksCannotBeOverwritten(t *testing.T) {
 			root := t.TempDir()
 			original := []byte(httpManifest(server.URL+"/file.txt", destination))
 			writeFixture(t, filepath.Join(root, ".vendor.yaml"), original)
-			if _, err := fixtureService(
-				t,
-				root,
-				".vendor.yaml",
-			).Update(t.Context(), vendoring.OperationOptions{Force: true}); err == nil {
+			settings := fixtureSettings(root, ".vendor.yaml")
+			settings.Force = true
+			if _, err := fixtureServiceWithSettings(t, settings).Update(t.Context()); err == nil {
 				t.Fatal("control path accepted")
 			}
 			if !bytes.Equal(original, readFixture(t, filepath.Join(root, ".vendor.yaml"))) {
@@ -535,11 +670,9 @@ func TestControlPathsAndSymlinksCannotBeOverwritten(t *testing.T) {
 			if err := os.Symlink(external, link); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := fixtureService(
-				t,
-				root,
-				".vendor.yaml",
-			).Update(t.Context(), vendoring.OperationOptions{Force: true}); err == nil {
+			settings := fixtureSettings(root, ".vendor.yaml")
+			settings.Force = true
+			if _, err := fixtureServiceWithSettings(t, settings).Update(t.Context()); err == nil {
 				t.Fatal("symlink accepted")
 			}
 			entries, err := os.ReadDir(external)
@@ -575,11 +708,8 @@ func TestCustomLockFilenamePreservesOwnership(t *testing.T) {
 	)
 	settings := vendoring.NewSettings()
 	settings.RootPath, settings.ManifestPath, settings.LockPath = root, "nested/.vendor.yaml", "locks/custom.inventory"
-	first, err := vendoring.NewService(settings, vendoring.WithLogger(slog.New(slog.DiscardHandler)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := first.Update(t.Context(), vendoring.OperationOptions{}); err != nil {
+	first := fixtureServiceWithSettings(t, settings)
+	if _, err := first.Update(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if result, err := first.Check(t.Context()); err != nil || !result.Valid {
@@ -593,11 +723,9 @@ func TestCustomLockFilenamePreservesOwnership(t *testing.T) {
 		filepath.Join(root, ".vendor.yaml"),
 		[]byte(httpManifest(server.URL+"/file.txt", "nested/file.txt")),
 	)
-	if _, err := fixtureService(
-		t,
-		root,
-		".vendor.yaml",
-	).Update(t.Context(), vendoring.OperationOptions{Force: true}); err == nil {
+	otherSettings := fixtureSettings(root, ".vendor.yaml")
+	otherSettings.Force = true
+	if _, err := fixtureServiceWithSettings(t, otherSettings).Update(t.Context()); err == nil {
 		t.Fatal("custom lock ownership was ignored")
 	}
 }
@@ -611,12 +739,15 @@ func TestCaseOnlyDestinationChangeIsRejected(t *testing.T) {
 	filename := filepath.Join(root, ".vendor.yaml")
 	writeFixture(t, filename, []byte(httpManifest(server.URL+"/file.txt", "file.txt")))
 	s := fixtureService(t, root, ".vendor.yaml")
-	if _, err := s.Update(t.Context(), vendoring.OperationOptions{}); err != nil {
+	if _, err := s.Update(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	oldLock := readFixture(t, filepath.Join(root, ".vendor.lock.yaml"))
 	writeFixture(t, filename, []byte(httpManifest(server.URL+"/file.txt", "FILE.txt")))
-	if _, err := s.Update(t.Context(), vendoring.OperationOptions{Force: true}); err == nil {
+	settings := fixtureSettings(root, ".vendor.yaml")
+	settings.Force = true
+	s = fixtureServiceWithSettings(t, settings)
+	if _, err := s.Update(t.Context()); err == nil {
 		t.Fatal("case-only rename accepted")
 	}
 	if string(readFixture(t, filepath.Join(root, "file.txt"))) != "data" ||
@@ -638,7 +769,7 @@ func TestMissingSelectedFileDoesNotPublish(t *testing.T) {
 		1,
 	)
 	writeFixture(t, filepath.Join(root, ".vendor.yaml"), []byte(m))
-	if _, err := fixtureService(t, root, ".vendor.yaml").Update(t.Context(), vendoring.OperationOptions{}); err == nil {
+	if _, err := fixtureService(t, root, ".vendor.yaml").Update(t.Context()); err == nil {
 		t.Fatal("missing source was accepted")
 	}
 	for _, path := range []string{"assets", ".vendor.lock.yaml", ".go42x/backups"} {
@@ -667,7 +798,7 @@ func TestWritersSerializeAcrossTemporaryDirectories(t *testing.T) {
 	writeFixture(t, filepath.Join(root, ".vendor.yaml"), []byte(httpManifest(server.URL+"/file.txt", "file.txt")))
 	first := fixtureService(t, root, ".vendor.yaml")
 	done := make(chan error, 1)
-	go func() { _, err := first.Update(t.Context(), vendoring.OperationOptions{}); done <- err }()
+	go func() { _, err := first.Update(t.Context()); done <- err }()
 	select {
 	case <-started:
 	case <-time.After(3 * time.Second):
@@ -675,13 +806,11 @@ func TestWritersSerializeAcrossTemporaryDirectories(t *testing.T) {
 	}
 	settings := vendoring.NewSettings()
 	settings.RootPath, settings.TempDir = root, ".different-scratch"
-	second, err := vendoring.NewService(settings, vendoring.WithLogger(slog.New(slog.DiscardHandler)))
-	if err != nil {
-		t.Fatal(err)
-	}
+	settings.DryRun = true
+	second := fixtureServiceWithSettings(t, settings)
 	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
-	if _, err := second.Update(ctx, vendoring.OperationOptions{DryRun: true}); err == nil {
+	if _, err := second.Update(ctx); err == nil {
 		t.Fatal("second writer bypassed the project lock")
 	}
 	if calls.Load() != 1 {

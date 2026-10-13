@@ -7,9 +7,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/go42-dev/go42x/internal/agentenv"
 	"github.com/go42-dev/go42x/internal/cmdutil"
-	"github.com/go42-dev/go42x/pkg/agentenv"
-	"github.com/go42-dev/go42x/pkg/config"
+	"github.com/go42-dev/go42x/internal/config"
 )
 
 func newGenerateCommand(f *cmdutil.Factory) *cobra.Command {

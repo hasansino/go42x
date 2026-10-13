@@ -6,8 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/go42-dev/go42x/internal/buildinfo"
 	"github.com/go42-dev/go42x/internal/cmdutil"
-	"github.com/go42-dev/go42x/internal/version"
 )
 
 func NewVersionCommand(f *cmdutil.Factory) *cobra.Command {
@@ -27,7 +27,7 @@ func runVersionCommand(f *cmdutil.Factory) error {
 	_, err := fmt.Fprintf(
 		f.Output(),
 		"Version: %s\nGo:      %s\nOS/Arch: %s/%s\n",
-		version.GetVersion(),
+		buildinfo.GetVersion(),
 		runtime.Version(),
 		runtime.GOOS,
 		runtime.GOARCH,

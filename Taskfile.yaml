@@ -182,8 +182,8 @@ tasks:
       COMMIT: '{{.COMMIT | default .GIT_COMMIT}}'
       LDFLAGS: >-
         -s -w
-        -X github.com/go42-dev/go42x/internal/version.xBuildVersion={{.VERSION}}
-        -X github.com/go42-dev/go42x/internal/version.xBuildCommit={{.COMMIT}}
+        -X github.com/go42-dev/go42x/internal/buildinfo.xBuildVersion={{.VERSION}}
+        -X github.com/go42-dev/go42x/internal/buildinfo.xBuildCommit={{.COMMIT}}
     cmds:
       - "mkdir -p .build"
       - 'CGO_ENABLED=0 SOURCE_DATE_EPOCH=0 go build -v -mod=readonly -trimpath -buildvcs=false -ldflags {{.LDFLAGS | shellQuote}}
@@ -282,7 +282,7 @@ tasks:
 
   lint:go:
     desc: "Lint all Go packages, or explicit local packages and subtrees (read only)"
-    summary: "Usage: task lint:go [-- ./internal/cmd ./pkg/kwb/...]"
+    summary: "Usage: task lint:go [-- ./internal/cmd ./internal/kwb/...]"
     preconditions:
       - *package_paths
     cmds:

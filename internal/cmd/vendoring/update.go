@@ -6,46 +6,65 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/go42-dev/go42x/internal/buildinfo"
 	"github.com/go42-dev/go42x/internal/cmdutil"
-	"github.com/go42-dev/go42x/internal/version"
-	"github.com/go42-dev/go42x/pkg/vendoring"
+	"github.com/go42-dev/go42x/internal/vendoring"
+	"github.com/go42-dev/go42x/internal/vendoring/adapters/cli"
 )
 
 func newUpdateCommand(f *cmdutil.Factory) *cobra.Command {
+	defaults := vendoring.NewSettings()
 	cmd := &cobra.Command{
 		Use:         "update",
 		Short:       "Resolve sources and update owned files and lock",
 		Args:        cobra.NoArgs,
 		Annotations: map[string]string{"result-output": "true"},
 		RunE: func(_ *cobra.Command, _ []string) error {
-			settings := commandSettings()
-			options := vendoring.OperationOptions{DryRun: viper.GetBool("dry-run"), Force: viper.GetBool("force")}
-			asJSON := viper.GetBool("json")
-			if err := validateCommandSettings(f, settings, "update", asJSON); err != nil {
-				return err
+			settings := &vendoring.Settings{
+				RootPath:     viper.GetString("root"),
+				ManifestPath: viper.GetString("manifest"),
+				LockPath:     viper.GetString("lock"),
+				TempDir:      defaults.TempDir,
+				Timeout:      defaults.Timeout,
+				DryRun:       viper.GetBool("dry-run"),
+				Force:        viper.GetBool("force"),
+				JSON:         viper.GetBool("json"),
 			}
-			return runUpdateCommand(f, settings, options, asJSON)
+			if err := settings.Validate(); err != nil {
+				return cmdutil.UsageError(err)
+			}
+			return runUpdateCommand(f, settings)
 		},
 	}
-	cmd.Flags().Bool("dry-run", false, "preview changes without modifying destinations, lock or backups")
-	cmd.Flags().Bool("force", false, "back up and replace locally modified or conflicting targets")
+
+	cmd.Flags().Bool(
+		"dry-run", false,
+		"preview changes without modifying destinations, lock or backups")
+	cmd.Flags().Bool(
+		"force", false,
+		"back up and replace locally modified or conflicting targets")
+
 	return cmd
 }
 
-func runUpdateCommand(
-	f *cmdutil.Factory,
-	settings *vendoring.Settings,
-	options vendoring.OperationOptions,
-	asJSON bool,
-) error {
+func runUpdateCommand(f *cmdutil.Factory, settings *vendoring.Settings) error {
+	if err := settings.LoadProject(); err != nil {
+		return cli.Report(f.Output(), settings, "update", nil, err)
+	}
+	if err := settings.Validate(); err != nil {
+		return cli.Report(f.Output(), settings, "update", nil, err)
+	}
+	if err := settings.Resolve(); err != nil {
+		return cli.Report(f.Output(), settings, "update", nil, err)
+	}
 	service, err := vendoring.NewService(
 		settings,
 		vendoring.WithLogger(slog.Default()),
-		vendoring.WithVersion(version.GetVersion()),
+		vendoring.WithVersion(buildinfo.GetVersion()),
 	)
 	if err != nil {
-		return report(f, emptyResult("update"), err, asJSON)
+		return cli.Report(f.Output(), settings, "update", nil, err)
 	}
-	result, err := service.Update(f.Context(), options)
-	return report(f, result, err, asJSON)
+	result, err := service.Update(f.Context())
+	return cli.Report(f.Output(), settings, "update", result, err)
 }

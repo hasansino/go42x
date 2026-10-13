@@ -50,6 +50,8 @@ func TestAgentEnvUpstream(t *testing.T) {
 	}
 	documents := []string{
 		"upstream/go/code-review-comments.md",
+		"upstream/go/package-names.md",
+		"upstream/go/effective-go.md",
 		"upstream/google-go/index.md",
 		"upstream/google-go/guide.md",
 		"upstream/google-go/decisions.md",
@@ -64,6 +66,20 @@ func TestAgentEnvUpstream(t *testing.T) {
 			t.Errorf("init did not install the bundled reference %s", path)
 		}
 	}
+	lock, err := fs.ReadFile(templates, ".vendor.lock.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := p.read(t, ".go42x/.vendor.lock.yaml"); got != string(lock) {
+		t.Fatal("init did not install the bundled upstream lock")
+	}
+	p.run(t, 0, "vendor", "touch", ".build/schema-reference")
+	schemaHeader := strings.SplitN(p.read(t, ".build/schema-reference/.vendor.yaml"), "\n", 2)[0]
+	manifest := p.read(t, ".go42x/.vendor.yaml")
+	if !strings.Contains(manifest, schemaHeader+"\n") {
+		t.Fatalf("bundled manifest schema differs from this binary's schema reference: %s", manifest)
+	}
+	p.run(t, 0, "vendor", "check", "--manifest", ".go42x/.vendor.yaml")
 	p.run(t, 0, "agentenv", "generate")
 	instructions := p.read(t, "AGENTS.md")
 	if !strings.Contains(instructions, "# Go Code Style\n") {
@@ -81,6 +97,10 @@ func TestAgentEnvUpstream(t *testing.T) {
 	const custom = ".go42x/upstream/custom.md"
 	p.write(t, reference, "Customized reference\n")
 	p.write(t, custom, "Additional project reference\n")
+	p.write(t, ".go42x/.vendor.yaml", "Customized upstream manifest\n")
+	p.write(t, ".go42x/.vendor.lock.yaml", "Customized upstream lock\n")
+	const projectManifest = "version: \"1.0\"\ndependencies: {}\n"
+	p.write(t, ".vendor.yaml", projectManifest)
 	beforeInit := p.snapshot(t)
 	p.run(t, 0, "agentenv", "init")
 	p.assertUnchanged(t, beforeInit)
@@ -95,6 +115,15 @@ func TestAgentEnvUpstream(t *testing.T) {
 	if got := p.read(t, custom); got != "Additional project reference\n" {
 		t.Error("update changed an additional project reference")
 	}
+	if got := p.read(t, ".vendor.yaml"); got != projectManifest {
+		t.Fatal("update changed the project's own vendoring manifest")
+	}
+	if got := p.read(t, ".go42x/.vendor.yaml"); got != manifest {
+		t.Fatal("update did not restore the bundled upstream manifest")
+	}
+	if got := p.read(t, ".go42x/.vendor.lock.yaml"); got != string(lock) {
+		t.Fatal("update did not restore the bundled upstream lock")
+	}
 	backups, err := filepath.Glob(
 		filepath.Join(p.root, ".go42x/backups/updates/*/files", filepath.FromSlash(reference)),
 	)
@@ -108,17 +137,25 @@ func TestAgentEnvUpstream(t *testing.T) {
 	if got := p.read(t, "AGENTS.md"); got != instructions {
 		t.Error("update regenerated instructions")
 	}
-	if err := filepath.WalkDir(p.root, func(path string, entry fs.DirEntry, err error) error {
-		if err != nil {
-			return err
+	for path, want := range map[string]string{
+		".go42x/.vendor.yaml":      "Customized upstream manifest\n",
+		".go42x/.vendor.lock.yaml": "Customized upstream lock\n",
+	} {
+		metadataBackups, err := filepath.Glob(
+			filepath.Join(p.root, ".go42x/backups/updates/*/files", filepath.FromSlash(path)),
+		)
+		if err != nil || len(metadataBackups) != 1 {
+			t.Fatalf("upstream metadata backups for %s = %v, %v", path, metadataBackups, err)
 		}
-		if strings.HasPrefix(entry.Name(), ".vendor.") {
-			t.Errorf("installed maintainer metadata: %s", path)
+		data, err := os.ReadFile(metadataBackups[0])
+		if err != nil || string(data) != want {
+			t.Errorf("upstream metadata backup %s = %q, %v", path, data, err)
 		}
-		return nil
-	}); err != nil {
-		t.Fatal(err)
 	}
+	if _, err := os.Stat(filepath.Join(p.root, ".go42x/.vendor.schema.yaml")); !os.IsNotExist(err) {
+		t.Fatalf("installed a local vendor schema: %v", err)
+	}
+	p.run(t, 0, "vendor", "check", "--manifest", ".go42x/.vendor.yaml")
 }
 
 func TestAgentEnvLifecycle(t *testing.T) {

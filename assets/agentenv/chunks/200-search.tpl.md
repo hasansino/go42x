@@ -65,8 +65,9 @@ source budget when other evidence is available; unused space returns to evidence
 Use `docs_get` to read a requirement, decision, or handbook page by its authored ID.
 Documents can live anywhere in the project. YAML front matter supplies `id`,
 `title`, and optional `collection`; directory names do not determine document type.
-The documentation entrypoint defaults to `docs/README.md`; configure another path
-with `go42x mcp --docs-entrypoint`. Discovery respects `.gitignore` files.
+Configure the documentation entrypoint with `project.documentation-entrypoint` in
+`.go42x/go42x.yaml`; omitted or empty defaults to `docs/README.md`.
+Local overrides in `.go42x/go42x.local.yaml` apply. Discovery respects `.gitignore` files.
 Draft and proposed records require agreement before implementation. Acceptance
 alone does not establish delivery; retain the status and replacement chain when
 using historical records.
@@ -175,8 +176,9 @@ Indexing respects `.gitignore` files inside the selected root, including nested
 rules and negation. It excludes its own index directory, build/tool directories,
 binary files, symlinks, generated Go files, and common lockfiles. Use
 `--include-ext=.xyz` to add an extension, or a filename such as `Makefile.custom`.
-Authored `.go42x/go42x.yaml`, instruction templates, and `.env.example` are
-eligible. Generated state, backups, local overrides, and the index are excluded.
+Authored `.go42x/go42x.yaml`, instruction templates, `.env.example`, and Markdown
+references under `.go42x/upstream/` are eligible. Generated state, backups, local
+overrides, and the index are excluded.
 `kwb build` creates `.go42x/kwb.ignore` with a comment header when missing;
 existing files are preserved. Add root-relative Git ignore patterns to omit
 generated bundles while retaining handwritten files, or pass `--exclude-file`

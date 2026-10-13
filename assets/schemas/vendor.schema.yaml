@@ -116,6 +116,13 @@ definitions:
         $ref: '#/definitions/relativePath'
       to:
         $ref: '#/definitions/relativePath'
+      converter:
+        type: string
+        enum:
+          - ""
+          - html-to-markdown
+        description: Named converter applied before hashing the destination. Omit to copy source bytes. HTML to Markdown converts
+          the complete document and preserves link targets.
   relativePath:
     type: string
     description: Portable relative file path; destinations are relative to the manifest directory.

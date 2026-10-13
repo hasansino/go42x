@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/go42-dev/go42x/internal/cmdutil"
-	"github.com/go42-dev/go42x/pkg/kwb"
+	"github.com/go42-dev/go42x/internal/kwb"
 )
 
 func newSearchCommand(f *cmdutil.Factory) *cobra.Command {

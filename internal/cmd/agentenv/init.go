@@ -6,8 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/go42-dev/go42x/internal/agentenv"
 	"github.com/go42-dev/go42x/internal/cmdutil"
-	"github.com/go42-dev/go42x/pkg/agentenv"
 )
 
 func newInitCommand(f *cmdutil.Factory) *cobra.Command {

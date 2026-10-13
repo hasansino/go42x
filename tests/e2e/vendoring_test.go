@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/go42-dev/go42x/pkg/vendoring"
+	"github.com/go42-dev/go42x/internal/vendoring"
 )
 
 func vendorManifest(remote string) string {
@@ -360,4 +360,42 @@ func TestVendorInvalidConfigurationAndUsage(t *testing.T) {
 		p.run(t, 2, args...)
 	}
 	p.assertUnchanged(t, before)
+}
+
+func TestVendorRejectsInvalidPathsBeforeFetching(t *testing.T) {
+	t.Parallel()
+	var requests atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		_, _ = w.Write([]byte("data"))
+	}))
+	defer server.Close()
+	p := newProject(t)
+	p.write(t, ".vendor.yaml", vendorManifest(server.URL))
+	p.write(t, "root-file", "not a directory\n")
+	before := p.snapshot(t)
+	for _, tc := range []struct {
+		name string
+		args []string
+	}{
+		{"missing root", []string{"--root", filepath.Join(p.root, "missing")}},
+		{"root file", []string{"--root", filepath.Join(p.root, "root-file")}},
+		{"manifest outside root", []string{"--manifest", "../outside.yaml"}},
+		{"lock outside root", []string{"--lock", "../outside.lock.yaml"}},
+		{"colliding metadata", []string{"--lock", ".vendor.yaml"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, operation := range []string{"check", "sync", "update"} {
+				args := append([]string{"vendor", operation, "--json"}, tc.args...)
+				r := vendorReport(t, p.run(t, 1, args...))
+				if r.Valid || r.Operation != operation || len(r.Issues) != 1 {
+					t.Fatalf("%s accepted invalid paths: %+v", operation, r)
+				}
+				if requests.Load() != 0 {
+					t.Fatal("fetched a source before validating paths")
+				}
+				p.assertUnchanged(t, before)
+			}
+		})
+	}
 }

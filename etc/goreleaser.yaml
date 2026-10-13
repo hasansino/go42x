@@ -31,8 +31,8 @@ builds:
       - -buildvcs=false
     ldflags:
       - -s -w
-      - -X github.com/go42-dev/go42x/internal/version.xBuildVersion={{ .Version }}
-      - -X github.com/go42-dev/go42x/internal/version.xBuildCommit={{ .FullCommit }}
+      - -X github.com/go42-dev/go42x/internal/buildinfo.xBuildVersion={{ .Version }}
+      - -X github.com/go42-dev/go42x/internal/buildinfo.xBuildCommit={{ .FullCommit }}
 
 archives:
   - id: go42x

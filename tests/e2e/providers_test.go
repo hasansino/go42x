@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go42-dev/go42x/pkg/doctor/check"
+	"github.com/go42-dev/go42x/internal/doctor/check"
 )
 
 const providerProjectConfig = `version: "1.0"

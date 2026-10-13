@@ -1,8 +1,14 @@
 ---
 manifest: .vendor.yaml
-manifest-sha256: 1198464b2e7197c94635134121f925e04f695b95c12eba78ccf396cdbccd2422
+manifest-sha256: 90bcd5a369ea5ff8ce003469abbb5fd8bd4ff5d6e96e9d26a4b2fd92478c1789
 dependencies:
-  go-code-review-comments:
+  go-website:
+    resolved:
+      commit: 575a6925e2d55ad160ed77f402bfaa4ec7458749
+    files:
+      upstream/go/effective-go.md: fb2c9c2a15bfd5845a5c5edf4ad93726052514a1691e06b6035955d261f08667
+      upstream/go/package-names.md: 06aec3ea1ae94a724dc1f8502624465d4f797570652408abe79fb510bb16126c
+  go-wiki:
     resolved:
       commit: 597c1be3575fe7c21913ea1bfb955ec364254f09
     files:
