@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/go42-dev/go42x/internal/agentenv"
+	"github.com/go42-dev/go42x/internal/agentenv/adapters/cli"
 	"github.com/go42-dev/go42x/internal/cmdutil"
 	"github.com/go42-dev/go42x/internal/config"
 )
@@ -16,9 +17,11 @@ func newGenerateCommand(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "generate",
 		Short: "Generate ai agent configuration",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			settings := &agentenv.Settings{
 				Clean: viper.GetBool("clean"),
+				JSON:  viper.GetBool("json"),
 			}
 			if cmdutil.ExplicitFlag(cmd, "providers") {
 				var err error
@@ -50,7 +53,13 @@ func runGenerateCommand(f *cmdutil.Factory, settings *agentenv.Settings) error {
 		agentenv.WithLogger(slog.Default()),
 	)
 	if err != nil {
-		return fmt.Errorf("failed to initialize agentenv service: %w", err)
+		return cli.ReportGenerate(
+			f.Output(),
+			settings,
+			nil,
+			fmt.Errorf("failed to initialize agentenv service: %w", err),
+		)
 	}
-	return service.Generate(f.Context())
+	result, err := service.Generate(f.Context())
+	return cli.ReportGenerate(f.Output(), settings, result, err)
 }

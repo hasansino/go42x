@@ -18,11 +18,10 @@ import (
 
 func NewMCPCommand(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:         "mcp",
-		Short:       "Start the go42x MCP server over stdio",
-		Long:        "Start the go42x MCP server over stdio with knowledge-base, documentation, and project context tools.",
-		Args:        cobra.NoArgs,
-		Annotations: map[string]string{"mcp-stdio": "true"},
+		Use:   "mcp",
+		Short: "Start the go42x MCP server over stdio",
+		Long:  "Start the go42x MCP server over stdio with knowledge-base, documentation, and project context tools.",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			settings := &mcpserver.Settings{
 				IndexPath:     viper.GetString("index"),

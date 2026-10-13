@@ -123,7 +123,6 @@ func (g *Generator) Prepare(ctx context.Context, clean bool) (*fspatch.Plan, err
 		ctxData := tplCtx.ToMap()
 		ctxData["provider"] = name
 		if err := p.Prepare(plan, ctxData, providerConfig); err != nil {
-			g.logger.Error("Provider preparation failed", "provider", name, "error", err)
 			preparationErrors = append(preparationErrors, fmt.Errorf("provider %s: %w", name, err))
 		}
 	}
@@ -164,7 +163,7 @@ func (g *Generator) buildTemplateContext(ctx context.Context) (*Context, error) 
 				g.logger.Warn("Collector returned partial data", "collector", c.Name(), "error", err)
 			}
 		} else if err != nil {
-			g.logger.Error("Collector failed", "collector", c.Name(), "error", err)
+			g.logger.Warn("Collector failed", "collector", c.Name(), "error", err)
 		}
 	}
 

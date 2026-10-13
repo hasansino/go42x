@@ -60,7 +60,7 @@ func (s *Service) BuildIndex(ctx context.Context, rootPath string) (BuildResult,
 	if err != nil {
 		return report, fmt.Errorf("building index: %w", err)
 	}
-	s.logger.InfoContext(ctx, "Knowledge base updated", "indexed", report.Indexed, "unchanged", report.Unchanged,
+	s.logger.DebugContext(ctx, "Knowledge base updated", "indexed", report.Indexed, "unchanged", report.Unchanged,
 		"deleted", report.Deleted, "files", report.Files, "chunks", report.Chunks, "duration", report.Duration)
 	return report, nil
 }

@@ -15,10 +15,9 @@ import (
 func newUpdateCommand(f *cmdutil.Factory) *cobra.Command {
 	defaults := vendoring.NewSettings()
 	cmd := &cobra.Command{
-		Use:         "update",
-		Short:       "Resolve sources and update owned files and lock",
-		Args:        cobra.NoArgs,
-		Annotations: map[string]string{"result-output": "true"},
+		Use:   "update",
+		Short: "Resolve sources and update owned files and lock",
+		Args:  cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			settings := &vendoring.Settings{
 				RootPath:     viper.GetString("root"),

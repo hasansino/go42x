@@ -20,6 +20,14 @@ const (
 	configFile  = "go42x.yaml"
 )
 
+type InitResult struct {
+	Directory string `json:"directory"`
+}
+
+type GenerateResult struct {
+	Changes []fspatch.Change `json:"changes"`
+}
+
 type Service struct {
 	logger   *slog.Logger
 	settings *Settings
@@ -47,28 +55,26 @@ func NewAgentEnvService(settings *Settings, opts ...Option) (*Service, error) {
 
 // Init initializes the agentenv environment in the current directory.
 // Existing configuration and templates are preserved.
-func (s *Service) Init(_ context.Context) error {
+func (s *Service) Init(_ context.Context) (*InitResult, error) {
 	s.logger.Info("Initializing agentenv")
 
 	if _, err := os.Stat(filepath.Join(agentEnvDir, configFile)); err == nil {
 		s.logger.Info("Configuration already exists")
 	} else if !os.IsNotExist(err) {
-		return fmt.Errorf("failed to check configuration: %w", err)
+		return nil, fmt.Errorf("failed to check configuration: %w", err)
 	}
 
 	s.logger.Info("Installing missing configuration templates")
 
 	if err := extractBundle(agentEnvDir); err != nil {
-		return fmt.Errorf("failed to extract template: %w", err)
+		return nil, fmt.Errorf("failed to extract template: %w", err)
 	}
 
 	if err := updateGitIgnore("."); err != nil {
-		return fmt.Errorf("failed to update .gitignore: %w", err)
+		return nil, fmt.Errorf("failed to update .gitignore: %w", err)
 	}
 
-	s.logger.Info("agentenv initialized successfully")
-
-	return nil
+	return &InitResult{Directory: agentEnvDir}, nil
 }
 
 // Update validates and replaces bundled sources and the managed .gitignore block
@@ -152,10 +158,10 @@ func (s *Service) Update(ctx context.Context) (*fspatch.UpdateResult, error) {
 }
 
 // Generate generates the agent environment configuration in the current directory.
-func (s *Service) Generate(ctx context.Context) error {
+func (s *Service) Generate(ctx context.Context) (*GenerateResult, error) {
 	workingDir, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
+		return nil, fmt.Errorf("failed to get current directory: %w", err)
 	}
 	s.logger.Info("Generating agentenv", "dir", workingDir)
 
@@ -163,7 +169,7 @@ func (s *Service) Generate(ctx context.Context) error {
 	cfgPath := filepath.Join(templateDir, configFile)
 	cfg, err := config.LoadProjectConfig(cfgPath, s.settings.Providers)
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
 	gen := generator.NewGenerator(
@@ -171,11 +177,12 @@ func (s *Service) Generate(ctx context.Context) error {
 		cfg, templateDir, workingDir,
 	)
 
-	if err := gen.Generate(ctx, s.settings.Clean); err != nil {
-		return fmt.Errorf("generation failed: %w", err)
+	plan, err := gen.Prepare(ctx, s.settings.Clean)
+	if err != nil {
+		return nil, fmt.Errorf("generation failed: %w", err)
 	}
-
-	s.logger.Info("Generation completed")
-
-	return nil
+	if err := plan.Apply(); err != nil {
+		return nil, fmt.Errorf("generation failed: %w", err)
+	}
+	return &GenerateResult{Changes: plan.Changes()}, nil
 }

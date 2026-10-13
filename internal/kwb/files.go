@@ -3,6 +3,7 @@ package kwb
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -20,7 +21,7 @@ var defaultExcludedDirs = []string{
 }
 
 var defaultExtensions = map[string]bool{
-	".go": true, ".md": true, ".markdown": true, ".txt": true, ".rst": true, ".adoc": true,
+	".go": true, markdownFileSuffix: true, markdownLongFileSuffix: true, ".txt": true, ".rst": true, ".adoc": true,
 	".yaml": true, ".yml": true, ".mod": true, ".proto": true, ".sql": true,
 	".json": true, ".toml": true, ".env": true, ".sh": true, ".ini": true,
 	".js": true, ".jsx": true, ".ts": true, ".tsx": true, ".py": true, ".rs": true,
@@ -36,33 +37,85 @@ var defaultExcludedFiles = []string{
 	"poetry.lock",
 }
 
-var defaultFilenames = []string{"Makefile", "Dockerfile", ".gitignore", ".env", ".env.example", "kwb.ignore"}
+var defaultFilenames = []string{
+	"Makefile",
+	"Dockerfile",
+	".gitignore",
+	".env",
+	".env.example",
+	sourceIgnoreFile,
+}
 
-const sourceIgnorePath = ".go42x/kwb.ignore"
+const (
+	agentEnvDir            = ".go42x"
+	agentChunksDir         = "chunks"
+	agentUpstreamDir       = "upstream"
+	agentConfigFile        = "go42x.yaml"
+	sourceIgnoreFile       = "kwb.ignore"
+	templateFileSuffix     = ".tpl.md"
+	markdownFileSuffix     = ".md"
+	markdownLongFileSuffix = ".markdown"
+	sourceIgnorePath       = agentEnvDir + "/" + sourceIgnoreFile
+)
+
+const sourceIgnoreHeader = "# go42x knowledgebase will ignore the following files and directories\n\n"
 
 // Include authored configuration, instruction templates, and upstream Markdown references.
 func authoredAgentFile(relative string, directory bool) bool {
 	parts := strings.Split(filepath.ToSlash(relative), "/")
 	for i, part := range parts {
-		if part != ".go42x" {
+		if part != agentEnvDir {
 			continue
 		}
 		tail := parts[i+1:]
 		if len(tail) == 0 {
 			return directory
 		}
-		if tail[0] == "chunks" {
-			return directory || strings.HasSuffix(relative, ".tpl.md")
+		if tail[0] == agentChunksDir {
+			return directory || strings.HasSuffix(relative, templateFileSuffix)
 		}
-		if tail[0] == "upstream" {
-			return directory || strings.HasSuffix(relative, ".md") || strings.HasSuffix(relative, ".markdown")
+		if tail[0] == agentUpstreamDir {
+			return directory || strings.HasSuffix(relative, markdownFileSuffix) ||
+				strings.HasSuffix(relative, markdownLongFileSuffix)
 		}
 		if len(tail) != 1 || directory {
 			return false
 		}
-		return tail[0] == "go42x.yaml" || tail[0] == "kwb.ignore" || strings.HasSuffix(tail[0], ".tpl.md")
+		return tail[0] == agentConfigFile || tail[0] == sourceIgnoreFile ||
+			strings.HasSuffix(tail[0], templateFileSuffix)
 	}
 	return true
+}
+
+// ensureSourceIgnore creates the editable project exclusions on the first build.
+// Read operations never call it, and existing paths are left untouched.
+func ensureSourceIgnore(ctx context.Context, rootPath string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	root, err := os.OpenRoot(rootPath)
+	if err != nil {
+		return err
+	}
+	defer root.Close() //nolint:errcheck
+	if _, err := root.Lstat(sourceIgnorePath); !os.IsNotExist(err) {
+		return err
+	}
+	if err := root.MkdirAll(agentEnvDir, 0755); err != nil {
+		return err
+	}
+	file, err := root.OpenFile(sourceIgnorePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+	if os.IsExist(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("creating %s: %w", sourceIgnorePath, err)
+	}
+	_, writeErr := file.WriteString(sourceIgnoreHeader)
+	if err := errors.Join(writeErr, file.Close()); err != nil {
+		return fmt.Errorf("writing %s: %w", sourceIgnorePath, err)
+	}
+	return nil
 }
 
 func (m *indexManager) sourceExclusions(ctx context.Context, root string) (gitignore.Matcher, error) {

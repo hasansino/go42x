@@ -22,6 +22,7 @@ type Settings struct {
 	BatchSize           int
 	IndexType           string
 	Rebuild             bool
+	JSON                bool
 	SearchTimeout       time.Duration
 	SearchLimit         int
 }

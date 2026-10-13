@@ -69,7 +69,7 @@ func TestInitExtractsTemplatesAndPreservesCustomFiles(t *testing.T) {
 	localPath := filepath.Join(dir, ".go42x", config.LocalConfigFile)
 	writeFile(t, localPath, "providers: {codex: {enabled: true}}\n")
 	s := testService(t, dir, false)
-	if err := s.Init(t.Context()); err != nil {
+	if _, err := s.Init(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if string(readFile(t, custom)) != "custom personality" {
@@ -135,7 +135,7 @@ func TestInitExtractsTemplatesAndPreservesCustomFiles(t *testing.T) {
 	lockPath := filepath.Join(dir, ".go42x/.vendor.lock.yaml")
 	writeFile(t, manifestPath, "custom upstream manifest")
 	writeFile(t, lockPath, "custom upstream lock")
-	if err := s.Init(t.Context()); err != nil {
+	if _, err := s.Init(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if string(readFile(t, filepath.Join(dir, ".go42x/go42x.yaml"))) != "custom configuration" {
@@ -177,7 +177,12 @@ func TestInitFilesystemErrors(t *testing.T) {
 				}
 				want = "update .gitignore"
 			}
-			if err := testService(t, dir, false).Init(t.Context()); err == nil || !strings.Contains(err.Error(), want) {
+			if _, err := testService(
+				t,
+				dir,
+				false,
+			).Init(t.Context()); err == nil ||
+				!strings.Contains(err.Error(), want) {
 				t.Fatalf("Init() = %v, want %s", err, want)
 			}
 		})
@@ -203,7 +208,7 @@ func TestGenerateAndCleanPreserveSources(t *testing.T) {
 	t.Setenv("GITHUB_ACTIONS", "false")
 	dir := t.TempDir()
 	s := testService(t, dir, true)
-	if err := s.Init(t.Context()); err != nil {
+	if _, err := s.Init(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	configPath := filepath.Join(dir, ".go42x/go42x.yaml")
@@ -227,7 +232,7 @@ func TestGenerateAndCleanPreserveSources(t *testing.T) {
 	writeFile(t, custom, "preserve this")
 	asset := filepath.Join(dir, ".claude/agents/custom.md")
 	writeFile(t, asset, "preserve agent")
-	if err := s.Generate(t.Context()); err != nil {
+	if _, err := s.Generate(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	instructionsPath := filepath.Join(dir, "AGENTS.md")
@@ -240,7 +245,7 @@ func TestGenerateAndCleanPreserveSources(t *testing.T) {
 	}
 	writeFile(t, claudePath, "User Claude instructions")
 	writeFile(t, instructionsPath, "stale")
-	if err := s.Generate(t.Context()); err != nil {
+	if _, err := s.Generate(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if string(readFile(t, instructionsPath)) == "stale" {
@@ -267,7 +272,7 @@ func TestGenerateAndCleanPreserveSources(t *testing.T) {
 	if err := os.WriteFile(configPath, data, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Generate(t.Context()); err != nil {
+	if _, err := s.Generate(t.Context()); err != nil {
 		t.Fatalf("minimal project generation: %v", err)
 	}
 }
@@ -277,10 +282,10 @@ func TestGenerateErrors(t *testing.T) {
 	t.Setenv("GITHUB_ACTIONS", "false")
 	dir := t.TempDir()
 	s := testService(t, dir, false)
-	if err := s.Generate(t.Context()); !errors.Is(err, os.ErrNotExist) {
+	if _, err := s.Generate(t.Context()); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("missing config error = %v", err)
 	}
-	if err := s.Init(t.Context()); err != nil {
+	if _, err := s.Init(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	for _, tt := range []struct {
@@ -307,14 +312,14 @@ func TestGenerateErrors(t *testing.T) {
 			if tt.clean {
 				writeFile(t, filepath.Join(dir, tt.output, "child"), "do not remove")
 			}
-			err = testService(t, dir, tt.clean).Generate(t.Context())
+			_, err = testService(t, dir, tt.clean).Generate(t.Context())
 			if err == nil || !strings.Contains(err.Error(), tt.want) {
 				t.Fatalf("Generate() = %v, want %s", err, tt.want)
 			}
 		})
 	}
 	writeFile(t, filepath.Join(dir, ".go42x/go42x.yaml"), "invalid: [")
-	if err := s.Generate(t.Context()); err == nil || !strings.Contains(err.Error(), "failed to load config") {
+	if _, err := s.Generate(t.Context()); err == nil || !strings.Contains(err.Error(), "failed to load config") {
 		t.Fatalf("malformed config = %v", err)
 	}
 }
@@ -322,7 +327,7 @@ func TestGenerateErrors(t *testing.T) {
 func TestUpdateReplacesOnlyBundledSources(t *testing.T) {
 	dir := t.TempDir()
 	service := testService(t, dir, false)
-	if err := service.Init(t.Context()); err != nil {
+	if _, err := service.Init(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	local := "project:\n  name: local-project\nproviders:\n  claude:\n    enabled: true\n" +
@@ -440,7 +445,7 @@ func TestUpdateReplacesOnlyBundledSources(t *testing.T) {
 func TestUpdateDoesNotReadTemplatesOrUseBuildDirectory(t *testing.T) {
 	dir := t.TempDir()
 	service := testService(t, dir, false)
-	if err := service.Init(t.Context()); err != nil {
+	if _, err := service.Init(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	writeFile(t, filepath.Join(dir, ".build"), "not a directory")

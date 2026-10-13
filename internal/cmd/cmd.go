@@ -48,12 +48,7 @@ func NewGo42Command(ctx context.Context, f *cmdutil.Factory) *cobra.Command {
 
 			f.SetIOStreams(cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr())
 
-			output := f.Output()
-			if cmd.Annotations["mcp-stdio"] == "true" || cmd.Annotations["result-output"] == "true" {
-				output = f.ErrorOutput()
-			}
-
-			initLogging(options.LogLevel, output)
+			initLogging(options.LogLevel, f.ErrorOutput())
 
 			return nil
 		},

@@ -5,8 +5,10 @@ import (
 	"log/slog"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/go42-dev/go42x/internal/agentenv"
+	"github.com/go42-dev/go42x/internal/agentenv/adapters/cli"
 	"github.com/go42-dev/go42x/internal/cmdutil"
 )
 
@@ -14,8 +16,9 @@ func newInitCommand(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "Initialise ai agent configuration",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			settings := &agentenv.Settings{}
+			settings := &agentenv.Settings{JSON: viper.GetBool("json")}
 			if err := settings.Validate(); err != nil {
 				return cmdutil.UsageError(err)
 			}
@@ -31,7 +34,8 @@ func runInitCommand(f *cmdutil.Factory, settings *agentenv.Settings) error {
 		agentenv.WithLogger(slog.Default()),
 	)
 	if err != nil {
-		return fmt.Errorf("failed to initialize agentenv service: %w", err)
+		return cli.ReportInit(f.Output(), settings, nil, fmt.Errorf("failed to initialize agentenv service: %w", err))
 	}
-	return service.Init(f.Context())
+	result, err := service.Init(f.Context())
+	return cli.ReportInit(f.Output(), settings, result, err)
 }

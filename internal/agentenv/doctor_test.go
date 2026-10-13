@@ -65,7 +65,7 @@ func TestDoctorMissingAndDriftDoNotWrite(t *testing.T) {
 	if !reflect.DeepEqual(before, snapshotTree(t, root)) {
 		t.Fatal("drift doctor wrote files")
 	}
-	if err = service.Generate(t.Context()); err != nil {
+	if _, err = service.Generate(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	before = snapshotTree(t, root)
@@ -109,7 +109,7 @@ func TestDoctorChecksUseExplicitCheckout(t *testing.T) {
 		"{{.environment.working_dir}} {{.golang.go_version}}\n",
 	)
 	writeFile(t, filepath.Join(root, "go.mod"), "module example\ngo 1.27\n")
-	if err := service.Generate(t.Context()); err != nil {
+	if _, err := service.Generate(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	t.Chdir(t.TempDir())

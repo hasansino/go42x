@@ -14,12 +14,11 @@ import (
 func newTouchCommand(f *cmdutil.Factory) *cobra.Command {
 	defaults := vendoring.NewSettings()
 	return &cobra.Command{
-		Use:         "touch [directory]",
-		Short:       "Create a missing vendoring manifest",
-		Long:        "Create .vendor.yaml with an empty dependency mapping and a remote editor schema reference. Existing manifests are preserved. Relative directories resolve from --root; the default is the root itself.",
-		Example:     "  go42x vendor touch\n  go42x vendor touch api/proto/third_party",
-		Args:        cobra.MaximumNArgs(1),
-		Annotations: map[string]string{"result-output": "true"},
+		Use:     "touch [directory]",
+		Short:   "Create a missing vendoring manifest",
+		Long:    "Create .vendor.yaml with an empty dependency mapping and a remote editor schema reference. Existing manifests are preserved. Relative directories resolve from --root; the default is the root itself.",
+		Example: "  go42x vendor touch\n  go42x vendor touch api/proto/third_party",
+		Args:    cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			settings := &vendoring.Settings{
 				RootPath:     viper.GetString("root"),

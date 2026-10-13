@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-	"io"
 	"log/slog"
 
 	"github.com/spf13/cobra"
@@ -11,16 +9,15 @@ import (
 	"github.com/go42-dev/go42x/internal/cmdutil"
 	"github.com/go42-dev/go42x/internal/config"
 	"github.com/go42-dev/go42x/internal/doctor"
-	"github.com/go42-dev/go42x/internal/doctor/check"
+	"github.com/go42-dev/go42x/internal/doctor/adapters/cli"
 )
 
 func NewDoctorCommand(f *cmdutil.Factory) *cobra.Command {
 	defaults := doctor.NewSettings()
 	cmd := &cobra.Command{
-		Use:         "doctor",
-		Short:       "Troubleshoot go42x systems",
-		Args:        cobra.NoArgs,
-		Annotations: map[string]string{"result-output": "true"},
+		Use:   "doctor",
+		Short: "Troubleshoot go42x systems",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			settings := &doctor.Settings{
 				RootPath:  viper.GetString("root"),
@@ -62,51 +59,8 @@ func NewDoctorCommand(f *cmdutil.Factory) *cobra.Command {
 func runDoctorCommand(f *cmdutil.Factory, settings *doctor.Settings) error {
 	service, err := doctor.NewService(settings, doctor.WithLogger(slog.Default().With("component", "doctor-service")))
 	if err != nil {
-		return err
+		return cli.Report(f.Output(), settings, nil, err)
 	}
 	report, err := service.Run(f.Context())
-	if err != nil {
-		return err
-	}
-	if settings.JSON {
-		err = cmdutil.JSON(f.Output(), report)
-	} else {
-		err = printChecks(f.Output(), report.Checks, "")
-	}
-	if err != nil {
-		return err
-	}
-	if report.Status == check.Fail {
-		return cmdutil.FailedChecks()
-	}
-	return nil
-}
-
-func printChecks(output io.Writer, checks []check.Result, indent string) error {
-	for _, check := range checks {
-		if _, err := fmt.Fprintf(
-			output,
-			"%s%s %s: %s\n",
-			indent,
-			check.Status,
-			check.ID,
-			check.Message,
-		); err != nil {
-			return err
-		}
-		if check.Remediation != "" {
-			if _, err := fmt.Fprintf(output, "%s  %s\n", indent, check.Remediation); err != nil {
-				return err
-			}
-		}
-		for _, evidence := range check.Evidence {
-			if _, err := fmt.Fprintf(output, "%s  %s\n", indent, evidence); err != nil {
-				return err
-			}
-		}
-		if err := printChecks(output, check.Children, indent+"  "); err != nil {
-			return err
-		}
-	}
-	return nil
+	return cli.Report(f.Output(), settings, report, err)
 }

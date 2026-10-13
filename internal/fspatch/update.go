@@ -22,9 +22,9 @@ const (
 
 // UpdateResult describes a batch, including progress when application fails.
 type UpdateResult struct {
-	BackupDir string
-	Sources   int
-	Applied   int
+	BackupDir string `json:"backup_dir"`
+	Sources   int    `json:"sources"`
+	Applied   int    `json:"applied"`
 }
 
 type updateManifest struct {

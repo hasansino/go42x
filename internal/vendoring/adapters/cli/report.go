@@ -29,23 +29,15 @@ func Report(
 		result.Issues = append(result.Issues, vendoring.Issue{Reason: runErr.Error()})
 	}
 
-	var err error
-	if settings.JSON {
-		err = cmdutil.JSON(output, result)
-	} else {
-		err = writeText(output, result)
-	}
-	if err != nil {
-		return err
-	}
+	var failure error
 	if !result.Valid {
-		return &cmdutil.ExitError{
-			Code:     1,
-			Err:      fmt.Errorf("vendoring %s failed", result.Operation),
-			Reported: true,
-		}
+		failure = cmdutil.ReportedError(fmt.Errorf("vendoring %s failed", result.Operation))
 	}
-	return nil
+	var text func(io.Writer) error
+	if !settings.JSON {
+		text = func(w io.Writer) error { return writeText(w, result) }
+	}
+	return cmdutil.Report(output, result, failure, text)
 }
 
 func writeText(output io.Writer, result *vendoring.Result) error {

@@ -17,6 +17,8 @@ func NewAgentEnvCommand(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
+	cmd.PersistentFlags().Bool("json", false, "print structured results")
+
 	cmd.AddCommand(newInitCommand(f))
 	cmd.AddCommand(newUpdateCommand(f))
 	cmd.AddCommand(newGenerateCommand(f))

@@ -3,7 +3,6 @@ package cmdutil
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 
 	"github.com/spf13/cobra"
@@ -42,6 +41,43 @@ func JSON(output io.Writer, value any) error {
 	return json.NewEncoder(output).Encode(value)
 }
 
+// Report writes one result. A nil writeText selects JSON. Runtime errors use an
+// error object with any partial result; errors marked Reported retain the
+// feature's diagnostic result. Text renderers may show recovery information on
+// failure, while Cobra prints the error on stderr.
+func Report(output io.Writer, result any, runErr error, writeText func(io.Writer) error) error {
+	var exit *ExitError
+	reported := errors.As(runErr, &exit) && exit.Reported
+	if writeText != nil {
+		if err := writeText(output); err != nil {
+			return err
+		}
+		return runErr
+	}
+	if runErr != nil && !reported {
+		failure := struct {
+			Error  string `json:"error"`
+			Result any    `json:"result"`
+		}{Error: runErr.Error(), Result: result}
+		if err := JSON(output, failure); err != nil {
+			return err
+		}
+		return ReportedError(runErr)
+	}
+	if err := JSON(output, result); err != nil {
+		return err
+	}
+	return runErr
+}
+
+// ReportedError prevents Cobra from printing a failure already in the result.
+func ReportedError(err error) error {
+	if err == nil {
+		return nil
+	}
+	return &ExitError{Code: ExitCode(err), Err: err, Reported: true}
+}
+
 // ConfigureCommands classifies argument/flag errors and suppresses duplicate
 // output for errors already reported by a runner. Call after adding all commands.
 func ConfigureCommands(cmd *cobra.Command) {
@@ -65,8 +101,4 @@ func ConfigureCommands(cmd *cobra.Command) {
 	for _, child := range cmd.Commands() {
 		ConfigureCommands(child)
 	}
-}
-
-func FailedChecks() error {
-	return &ExitError{Code: 1, Err: fmt.Errorf("doctor found failed checks"), Reported: true}
 }

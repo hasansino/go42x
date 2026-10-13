@@ -9,6 +9,7 @@ import (
 type Settings struct {
 	Clean     bool
 	Providers []string
+	JSON      bool
 }
 
 func (o *Settings) Validate() error {

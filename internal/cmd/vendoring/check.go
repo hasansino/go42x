@@ -15,10 +15,9 @@ import (
 func newCheckCommand(f *cmdutil.Factory) *cobra.Command {
 	defaults := vendoring.NewSettings()
 	return &cobra.Command{
-		Use:         "check",
-		Short:       "Verify locked files offline without modifying them",
-		Args:        cobra.NoArgs,
-		Annotations: map[string]string{"result-output": "true"},
+		Use:   "check",
+		Short: "Verify locked files offline without modifying them",
+		Args:  cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			settings := &vendoring.Settings{
 				RootPath:     viper.GetString("root"),

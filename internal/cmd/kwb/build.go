@@ -1,6 +1,7 @@
 package kwb
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/go42-dev/go42x/internal/cmdutil"
 	"github.com/go42-dev/go42x/internal/kwb"
+	"github.com/go42-dev/go42x/internal/kwb/adapters/cli"
 )
 
 func newBuildCommand(f *cmdutil.Factory) *cobra.Command {
@@ -30,6 +32,7 @@ func newBuildCommand(f *cmdutil.Factory) *cobra.Command {
 				ExcludeFiles:        viper.GetStringSlice("exclude-file"),
 				ExtraExtensions:     viper.GetStringSlice("include-ext"),
 				Rebuild:             viper.GetBool("rebuild"),
+				JSON:                viper.GetBool("json"),
 				SearchTimeout:       defaults.SearchTimeout,
 				SearchLimit:         defaults.SearchLimit,
 				DefaultContentBytes: defaults.DefaultContentBytes,
@@ -62,23 +65,17 @@ func newBuildCommand(f *cmdutil.Factory) *cobra.Command {
 	cmd.Flags().
 		StringSlice("include-ext", defaults.ExtraExtensions, "additional file extensions to index")
 
+	cmd.Flags().Bool("json", false, "print structured build results")
+
 	return cmd
 }
 
 func runBuildCommand(f *cmdutil.Factory, settings *kwb.Settings) error {
-	service, err := kwb.NewService(
-		settings,
-		kwb.WithLogger(slog.Default().With("component", "kwb-service")),
-	)
+	service, err := kwb.NewService(settings, kwb.WithLogger(slog.Default().With("component", "kwb-service")))
 	if err != nil {
-		return fmt.Errorf("failed to create service: %w", err)
+		return cli.ReportBuild(f.Output(), settings, nil, fmt.Errorf("failed to create service: %w", err))
 	}
-
-	defer service.Close() // nolint:errcheck
-
-	if _, err := service.BuildIndex(f.Context(), settings.RootPath); err != nil {
-		return fmt.Errorf("failed to build index: %w", err)
-	}
-
-	return nil
+	result, err := service.BuildIndex(f.Context(), settings.RootPath)
+	err = errors.Join(err, service.Close())
+	return cli.ReportBuild(f.Output(), settings, &result, err)
 }
