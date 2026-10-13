@@ -79,10 +79,6 @@ jobs:
           install_args: --locked task
       - name: 'Download Go modules'
         run: go mod download
-      - name: 'Run integration tests with race detector'
-        run: task test:integration
-        env:
-          CGO_ENABLED: 1 # needed for -race
       - name: 'Run end-to-end tests with race detector'
         run: task test:e2e
         env:

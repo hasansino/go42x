@@ -45,10 +45,21 @@ jobs:
       continue_on_error: false
       timeout_minutes: 10
 
-  # stage 2: unit and end-to-end tests
+  # stage 2: unit, integration, and end-to-end tests
 
   unit-tests:
     uses: ./.github/workflows/120-unit-tests.yaml
+    permissions:
+      contents: read
+    needs:
+      - lint
+    with:
+      runs_on: ubuntu-latest
+      continue_on_error: false
+      timeout_minutes: 10
+
+  integration-tests:
+    uses: ./.github/workflows/120-integration-tests.yaml
     permissions:
       contents: read
     needs:
@@ -134,6 +145,7 @@ jobs:
       - gate-start
       - lint
       - unit-tests
+      - integration-tests
       - e2e-tests
       - security
       - build-artifacts
@@ -144,6 +156,7 @@ jobs:
           GATE_START_RESULT: ${{ needs.gate-start.result }}
           LINT_RESULT: ${{ needs.lint.result }}
           UNIT_TESTS_RESULT: ${{ needs.unit-tests.result }}
+          INTEGRATION_TESTS_RESULT: ${{ needs.integration-tests.result }}
           E2E_TESTS_RESULT: ${{ needs.e2e-tests.result }}
           SECURITY_RESULT: ${{ needs.security.result }}
           BUILD_ARTIFACTS_RESULT: ${{ needs.build-artifacts.result }}
@@ -152,6 +165,7 @@ jobs:
           echo "gate-start: $GATE_START_RESULT"
           echo "lint: $LINT_RESULT"
           echo "unit-tests: $UNIT_TESTS_RESULT"
+          echo "integration-tests: $INTEGRATION_TESTS_RESULT"
           echo "e2e-tests: $E2E_TESTS_RESULT"
           echo "security: $SECURITY_RESULT"
           echo "build-artifacts: $BUILD_ARTIFACTS_RESULT"
@@ -159,6 +173,7 @@ jobs:
           if [ "$GATE_START_RESULT" != 'success' ] || \
             [ "$LINT_RESULT" != 'success' ] || \
             [ "$UNIT_TESTS_RESULT" != 'success' ] || \
+            [ "$INTEGRATION_TESTS_RESULT" != 'success' ] || \
             [ "$E2E_TESTS_RESULT" != 'success' ] || \
             [ "$SECURITY_RESULT" != 'success' ] || \
             [ "$BUILD_ARTIFACTS_RESULT" != 'success' ] || \
