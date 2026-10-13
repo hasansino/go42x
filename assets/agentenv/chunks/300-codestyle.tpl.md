@@ -16,14 +16,68 @@ conventions.
 
 - Write function bodies and control flow on multiple lines, including functions
   that only return a value. Avoid one-line functions.
-- Use blank lines to separate logical steps. Keep related statements together
-  and preserve the surrounding layout.
 - Write map literals with multiple entries and struct literals with multiple
   fields across multiple lines, including in loop headers, arguments, and return
   statements. Put each entry or field on its own line, use a trailing comma, and
   put the closing brace on a separate line. Empty and single-entry or single-field
   literals may stay on one line.
 - End text files with a newline.
+
+### Readability
+
+- Use blank lines to separate logical steps, such as loading, validation, and
+  execution. Keep related statements together: a call with its error check,
+  resource acquisition with cleanup registration, and assignments that build one
+  value. Follow the surrounding grouping when extending existing code.
+
+Separate logical steps, keeping each call with its error check:
+
+```go
+settings, err := loadSettings(path)
+if err != nil {
+    return err
+}
+
+if err := settings.Validate(); err != nil {
+    return err
+}
+
+return run(ctx, settings)
+```
+
+Keep resource acquisition and cleanup registration together:
+
+```go
+ctx, cancel := context.WithTimeout(ctx, timeout)
+defer cancel()
+
+return client.Fetch(ctx)
+```
+
+Within loops, separate filtering from processing:
+
+```go
+for _, entry := range entries {
+    if entry.IsDir() {
+        continue
+    }
+
+    names = append(names, entry.Name())
+}
+```
+
+In tests, separate setup, execution, and assertions:
+
+```go
+input := []int{3, 1, 2}
+want := []int{1, 2, 3}
+
+slices.Sort(input)
+
+if !slices.Equal(input, want) {
+    t.Fatalf("got %v, want %v", input, want)
+}
+```
 
 ### Naming and declarations
 
