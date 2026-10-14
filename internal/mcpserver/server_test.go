@@ -386,11 +386,11 @@ func TestServeCancellationReachesActiveTools(t *testing.T) {
 
 func TestDocumentationAndContextToolsWithoutIndex(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, "guides"), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(root, "docs"), 0755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(
-		filepath.Join(root, "guides/auth.md"),
+		filepath.Join(root, "docs/auth.md"),
 		[]byte(
 			"---\nid: auth\ntitle: Tokens\ncollection: handbook\nsidebar_position: 1\n---\n# Tokens\n[Code](../src/auth.go)\n",
 		),
@@ -421,7 +421,7 @@ func TestDocumentationAndContextToolsWithoutIndex(t *testing.T) {
 	arguments := map[string]map[string]any{
 		"docs_get":        {"id": "auth"},
 		"docs_impact":     {"paths": []string{"src/auth.go"}},
-		"project_context": {"task": "rotate tokens", "paths": []string{"src/auth.go"}},
+		"project_context": {"paths": []string{"src/auth.go"}},
 	}
 	for _, tool := range listed.Tools {
 		if tool.OutputSchema.Type != "object" || tool.Annotations.ReadOnlyHint == nil ||

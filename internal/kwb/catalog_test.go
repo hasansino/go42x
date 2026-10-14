@@ -32,6 +32,7 @@ providers: {codex: {enabled: false}}
 	}{
 		{"no configuration", "", "", "docs/README.md"},
 		{"shared", shared, "", "handbook/shared.md"},
+		{"repository root", strings.ReplaceAll(shared, "handbook/shared.md", "README.md"), "", "README.md"},
 		{"local override", shared, "project: {documentation-entrypoint: team/local.markdown}", "team/local.markdown"},
 		{"local clear", shared, "project: {documentation-entrypoint: null}", "docs/README.md"},
 		{"normalized", shared, "project: {documentation-entrypoint: ./team/../handbook/shared.md}", "handbook/shared.md"},
@@ -57,15 +58,17 @@ providers: {codex: {enabled: false}}
 			writeFixture(t, root, ".go42x/go42x.yaml", shared)
 			writeFixture(t, root, ".go42x/go42x.local.yaml", "project: {documentation-entrypoint: team/updated.md}")
 			writeFixture(t, root, "team/updated.md", "# Updated documentation\n")
+			writeFixture(t, root, "team/guide.md", record("team-guide", "Team guide", "", "# Team guide"))
 			service := newDocs(t, root)
 			first, err := service.Catalog(t.Context())
-			if err != nil || first.entrypoint != "team/updated.md" {
+			if err != nil || first.entrypoint != "team/updated.md" || first.ByPath("team/guide.md") == nil {
 				t.Fatalf("updated entrypoint = %+v, %v", first, err)
 			}
 			writeFixture(t, root, ".go42x/go42x.local.yaml", "project: {documentation-entrypoint: handbook/shared.md}")
 			writeFixture(t, root, "handbook/shared.md", "# Shared documentation\n")
 			second, err := service.Catalog(t.Context())
-			if err != nil || second.entrypoint != "handbook/shared.md" || second.ByPath("team/updated.md") != nil {
+			if err != nil || second.entrypoint != "handbook/shared.md" || second.ByPath("team/updated.md") != nil ||
+				second.ByPath("team/guide.md") != nil {
 				t.Fatalf("stale entrypoint after local override changed = %+v, %v", second, err)
 			}
 		})
@@ -91,6 +94,80 @@ func TestCatalogRejectsInvalidProjectConfiguration(t *testing.T) {
 				t.Fatalf("invalid configuration fell back to defaults: catalog=%+v error=%v", catalog, err)
 			}
 		})
+	}
+}
+
+func TestCatalogExcludesUpstreamMarkdown(t *testing.T) {
+	root := t.TempDir()
+	writeFixture(t, root, "docs/README.md", "# Documentation\n[Upstream](../upstream/guide.md)\n")
+	writeFixture(t, root, "src/auth.go", "package auth\n")
+	writeFixture(t, root, "docs/auth.md", record("auth", "Auth", "", "# Auth\n[Code](../src/auth.go)"))
+	writeFixture(
+		t,
+		root,
+		"upstream/guide.md",
+		"---\ntitle: Upstream guide\n---\n# Upstream guide\n[Web](/wiki/Guide)\n",
+	)
+	writeFixture(t, root, "upstream/copy.md", record("auth", "Upstream copy", "",
+		"# upstreamneedle\n[Code](../src/auth.go)"))
+	writeFixture(t, root, "upstream/malformed.md", "---\ntitle: [\n---\n")
+	service := newDocs(t, root)
+	catalog, err := service.Catalog(t.Context())
+	if err != nil || len(catalog.Documents) != 2 || len(catalog.Diagnostics) != 0 {
+		t.Fatalf("upstream entered project catalog: %+v %v", catalog, err)
+	}
+	doc, err := catalog.ByID("auth")
+	if err != nil || doc.Path != "docs/auth.md" || catalog.ByPath("upstream/guide.md") != nil {
+		t.Fatalf("upstream ID or path promoted: %+v %v", doc, err)
+	}
+	impact, err := service.Impact(t.Context(), []string{"src/auth.go"})
+	if err != nil || len(impact.Documents) != 1 || impact.Documents[0].Path != "docs/auth.md" {
+		t.Fatalf("upstream became project guidance: %+v %v", impact, err)
+	}
+	if _, err := service.BuildIndex(t.Context(), root); err != nil {
+		t.Fatal(err)
+	}
+	found, err := service.Search(t.Context(), SearchOptions{Query: "upstreamneedle", PathPrefix: "upstream/"})
+	if err != nil || len(found.Results) != 1 || found.Results[0].Path != "upstream/copy.md" {
+		t.Fatalf("upstream is no longer searchable: %+v %v", found, err)
+	}
+}
+
+func TestCatalogValidatesOnlyDocumentationTree(t *testing.T) {
+	root := t.TempDir()
+	writeFixture(t, root, "docs/README.md", "# Documentation\n")
+	writeFixture(t, root, "docs/missing-id.md", "---\ntitle: Project page\n---\n# Project page\n")
+	writeFixture(t, root, "upstream/missing-id.md", "---\ntitle: Upstream page\n---\n# Upstream page\n")
+	catalog, err := newDocumentCatalog().Load(t.Context(), root)
+	if err != nil || len(catalog.Diagnostics) != 1 || catalog.Diagnostics[0].Code != "invalid_metadata" ||
+		catalog.Diagnostics[0].Path != "docs/missing-id.md" {
+		t.Fatalf("metadata validation escaped documentation tree: %+v %v", catalog, err)
+	}
+}
+
+func TestCatalogNestedDirectoryBoundary(t *testing.T) {
+	root := t.TempDir()
+	writeFixture(t, root, ".go42x/go42x.yaml", `version: "1.0"
+project: {name: example, documentation-entrypoint: team/docs/start.md}
+context: {template: agents.tpl.md}
+providers: {codex: {enabled: false}}
+`)
+	writeFixture(t, root, "team/docs/start.md", "# Documentation\n")
+	writeFixture(t, root, "team/docs/nested/guide.md", record("inside", "Inside", "", "# Inside"))
+	writeFixture(t, root, "team/ancestor.md", record("ancestor", "Ancestor", "", "# Ancestor"))
+	writeFixture(t, root, "team/docs-other/guide.md", record("sibling", "Sibling", "", "# Sibling"))
+	writeFixture(t, root, ".gitignore", "team/docs/root-ignored.md\n")
+	writeFixture(t, root, "team/.gitignore", "docs/ancestor-ignored.md\n")
+	writeFixture(t, root, "team/docs/nested/.gitignore", "nested-ignored.md\n")
+	for _, name := range []string{"root-ignored.md", "ancestor-ignored.md", "nested/nested-ignored.md"} {
+		writeFixture(t, root, "team/docs/"+name, record(name, name, "", "# Ignored"))
+	}
+	catalog, err := newDocumentCatalog().Load(t.Context(), root)
+	if err != nil || len(catalog.Documents) != 2 || len(catalog.Diagnostics) != 0 {
+		t.Fatalf("nested documentation boundary or ancestor ignores lost: %+v %v", catalog, err)
+	}
+	if _, err := catalog.ByID("inside"); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -331,9 +408,9 @@ func TestMetadataDiscoveryRespectsIgnoreRules(t *testing.T) {
 		t,
 		root,
 		".gitignore",
-		"generated/\n*.private.md\n!published.private.md\nscratch/**\n!scratch/kept.md\n",
+		"generated/\n*.private.md\n!published.private.md\ndocs/scratch/**\n!docs/scratch/kept.md\n",
 	)
-	writeFixture(t, root, "notes/.gitignore", "draft-*\n!draft-published.md\n")
+	writeFixture(t, root, "docs/notes/.gitignore", "draft-*\n!draft-published.md\n")
 	for name, id := range map[string]string{
 		"OVERVIEW.MD":              "overview",
 		"notes/design.markdown":    "design",
@@ -346,11 +423,11 @@ func TestMetadataDiscoveryRespectsIgnoreRules(t *testing.T) {
 		"scratch/hidden.md":        "ignored-descendant",
 		".git/internal.md":         "ignored-git",
 	} {
-		writeFixture(t, root, name, record(id, id, "", "# Content"))
+		writeFixture(t, root, "docs/"+name, record(id, id, "", "# Content"))
 	}
 	outside := t.TempDir()
 	writeFixture(t, outside, "outside.md", record("outside", "Outside", "", "# Outside"))
-	if err := os.Symlink(outside, filepath.Join(root, "linked-directory")); err != nil {
+	if err := os.Symlink(outside, filepath.Join(root, "docs/linked-directory")); err != nil {
 		t.Fatal(err)
 	}
 	s := newDocs(t, root)
@@ -376,7 +453,7 @@ func TestMetadataDiscoveryRespectsIgnoreRules(t *testing.T) {
 		t.Fatalf("ids=%v diagnostics=%+v, want %v", ids, catalog.Diagnostics, want)
 	}
 	// Ignore changes are reflected without reconstructing the service.
-	writeFixture(t, root, "notes/.gitignore", "")
+	writeFixture(t, root, "docs/notes/.gitignore", "")
 	if _, err := s.GetDocument(t.Context(), "ignored-nested", 0, 0); err != nil {
 		t.Fatal(err)
 	}
@@ -385,10 +462,10 @@ func TestMetadataDiscoveryRespectsIgnoreRules(t *testing.T) {
 func TestCollectionAndImpactFollowMetadata(t *testing.T) {
 	root := t.TempDir()
 	writeFixture(t, root, "src/auth.go", "package auth\n")
-	writeFixture(t, root, "policies/token.md", record("tokens", "Tokens",
+	writeFixture(t, root, "docs/policies/token.md", record("tokens", "Tokens",
 		"collection: requirements\nstatus: accepted\nrelated: [storage]\n",
-		"# Tokens\n[Code](../src/auth.go)\n[Decision](../notes/storage.md)"))
-	writeFixture(t, root, "notes/storage.md", record("storage", "Storage",
+		"# Tokens\n[Code](../../src/auth.go)\n[Decision](../notes/storage.md)"))
+	writeFixture(t, root, "docs/notes/storage.md", record("storage", "Storage",
 		"collection: decisions\nstatus: accepted\ndate: 2026-09-01\n", "# Storage"))
 	// The old conventional directory has no effect on collection or validation.
 	writeFixture(t, root, "docs/requirements/generic.md", record("generic", "Generic", "", "# Generic"))
@@ -415,11 +492,14 @@ func TestCollectionAndImpactFollowMetadata(t *testing.T) {
 		impact.Documents[1].ID != "storage" {
 		t.Fatalf("evidence: %+v", impact.Documents)
 	}
-	if err := os.Rename(filepath.Join(root, "policies/token.md"), filepath.Join(root, "notes/renamed.md")); err != nil {
+	if err := os.Rename(
+		filepath.Join(root, "docs/policies/token.md"),
+		filepath.Join(root, "docs/notes/renamed.md"),
+	); err != nil {
 		t.Fatal(err)
 	}
 	moved, err := s.GetDocument(t.Context(), "tokens", 0, 0)
-	if err != nil || moved.Document.Path != "notes/renamed.md" || moved.Document.Collection != "requirements" ||
+	if err != nil || moved.Document.Path != "docs/notes/renamed.md" || moved.Document.Collection != "requirements" ||
 		moved.Document.Hash != result.Document.Hash {
 		t.Fatalf("moved document: %+v %v", moved, err)
 	}

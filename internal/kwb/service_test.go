@@ -2,10 +2,8 @@ package kwb
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 )
@@ -35,130 +33,6 @@ func contextFixture(t *testing.T, configure ...func(*Settings)) (string, *Servic
 	return service.settings.RootPath, service
 }
 
-func TestContextUsesConfiguredEntrypoint(t *testing.T) {
-	root := t.TempDir()
-	writeFixture(t, root, "team/start.markdown", "# Start here\n")
-	writeFixture(t, root, "docs/README.md", "---\nid: unselected\ntitle: Unselected\n---\n# Unselected\n")
-	writeFixture(t, root, ".go42x/go42x.yaml", `version: "1.0"
-project: {name: example, documentation-entrypoint: team/start.markdown}
-context: {template: agents.tpl.md}
-providers: {codex: {enabled: false}}
-`)
-	service := testService(t, root, filepath.Join(root, ".go42x/kwb/index"), nil)
-	result, err := service.Context(t.Context(), ContextOptions{
-		Task: "fix sockets",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(result.Items) != 1 || result.Items[0].Path != "team/start.markdown" ||
-		result.Items[0].Reason != "bootstrap" ||
-		result.Items[0].Source.Content != "# Start here\n" {
-		t.Fatalf("startup context: %+v", result.Items)
-	}
-	for _, diagnostic := range result.Diagnostics {
-		if diagnostic.Code != "index_unavailable" {
-			t.Fatalf("plain Markdown entrypoint was rejected: %+v", result.Diagnostics)
-		}
-	}
-}
-
-func TestContextOrderStatusSourceAndDeterminism(t *testing.T) {
-	root, service := contextFixture(t)
-	if _, err := service.BuildIndex(t.Context(), root); err != nil {
-		t.Fatal(err)
-	}
-	options := ContextOptions{
-		Task:  "How do I rotate a refresh token?",
-		Paths: []string{"src/auth.go"},
-	}
-	result, err := service.Context(t.Context(), options)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(result.Items) < 5 || result.Items[0].Path != "docs/README.md" || result.Items[1].Path != "src/auth.go" {
-		t.Fatalf("items: %+v", result.Items)
-	}
-	foundCode, foundDraft, foundLink := false, false, false
-	for _, item := range result.Items {
-		if item.Path == "docs/handbook/auth.md" && item.Reason == "direct_link" && len(item.Evidence) > 0 {
-			foundLink = true
-		}
-		if item.Path == "src/auth.go" {
-			foundCode = true
-		}
-		if item.Document != nil && item.Document.Status == "draft" {
-			foundDraft = strings.Contains(item.StatusMeaning, "Not accepted")
-		}
-		if item.Document != nil && item.Document.Collection == "templates" {
-			t.Fatal("template in implementation context")
-		}
-	}
-	if !foundCode || !foundDraft || !foundLink {
-		t.Fatalf("code=%v draft=%v link=%v", foundCode, foundDraft, foundLink)
-	}
-	second, err := service.Context(t.Context(), options)
-	if err != nil || !reflect.DeepEqual(result, second) {
-		t.Fatalf("nondeterministic: %v", err)
-	}
-}
-
-func TestMissingAndStaleIndexAndBudgets(t *testing.T) {
-	root, service := contextFixture(t)
-	result, err := service.Context(t.Context(), ContextOptions{
-		Task: "rotate refresh token",
-	})
-	if err != nil || !hasDiagnostic(result, "index_unavailable") {
-		t.Fatalf("missing: %+v %v", result, err)
-	}
-	if _, err = service.BuildIndex(t.Context(), root); err != nil {
-		t.Fatal(err)
-	}
-	writeFixture(t, root, "src/auth.go", "package auth\n// Disabled rotations\n")
-	result, err = service.Context(t.Context(), ContextOptions{
-		Task: "rotate refresh token",
-	})
-	if err != nil || !hasDiagnostic(result, "stale_candidate") {
-		t.Fatalf("stale: %+v %v", result, err)
-	}
-	for _, item := range result.Items {
-		if item.Path == "src/auth.go" {
-			t.Fatal("stale source returned")
-		}
-	}
-	for _, budget := range []int{1, 100, 1024, DefaultContentBytes, MaxContentBytes} {
-		result, err = service.Context(t.Context(), ContextOptions{
-			Task:     "rotate refresh token",
-			MaxBytes: budget,
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		data, err := json.Marshal(result)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if result.ContentBytes > budget || len(data) > MaxResponseBytes {
-			t.Fatalf("budget=%d content=%d encoded=%d", budget, result.ContentBytes, len(data))
-		}
-	}
-	result, err = service.Context(t.Context(), ContextOptions{
-		Task: "Write a new requirement template",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	found := false
-	for _, item := range result.Items {
-		if item.Document != nil && item.Document.Collection == "templates" {
-			found = true
-		}
-	}
-	if !found {
-		t.Fatal("authoring template not retrieved")
-	}
-}
-
 func hasDiagnostic(result *ContextResult, code string) bool {
 	if result == nil {
 		return false
@@ -171,21 +45,6 @@ func hasDiagnostic(result *ContextResult, code string) bool {
 	return false
 }
 
-func TestContextRejectsMixedRoots(t *testing.T) {
-	root, indexed := contextFixture(t)
-	if _, err := indexed.BuildIndex(t.Context(), root); err != nil {
-		t.Fatal(err)
-	}
-	service := testService(t, t.TempDir(), indexed.settings.IndexPath, func(settings *Settings) {
-		settings.RequireRootMatch = true
-	})
-	if _, err := service.Context(t.Context(), ContextOptions{
-		Task: "tokens",
-	}); !errors.Is(err, ErrRootMismatch) {
-		t.Fatalf("mixed roots: %v", err)
-	}
-}
-
 func TestServiceValidatesSettingsBeforeOptions(t *testing.T) {
 	oversized := NewSettings()
 	oversized.DefaultContentBytes = MaxContentBytes + 1
@@ -195,26 +54,6 @@ func TestServiceValidatesSettingsBeforeOptions(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), "invalid settings:") || service != nil || called {
 			t.Fatalf("invalid settings initialized service: service=%v err=%v options=%v", service, err, called)
 		}
-	}
-}
-
-func TestConfiguredDefaultContentBudget(t *testing.T) {
-	const budget = 64
-	_, service := contextFixture(t, func(settings *Settings) {
-		settings.DefaultContentBytes = budget
-	})
-	result, err := service.Context(t.Context(), ContextOptions{
-		Task: "rotate refresh token",
-	})
-	if err != nil || result.ContentBytes > budget || !result.Truncated || !hasDiagnostic(result, "index_unavailable") {
-		t.Fatalf("configured default without an index: %+v %v", result, err)
-	}
-	result, err = service.Context(t.Context(), ContextOptions{
-		Task:     "rotate refresh token",
-		MaxBytes: DefaultContentBytes,
-	})
-	if err != nil || result.ContentBytes <= budget || result.ContentBytes > DefaultContentBytes {
-		t.Fatalf("explicit request budget: %+v %v", result, err)
 	}
 }
 
@@ -246,9 +85,7 @@ func TestUnifiedServiceFollowsIndexedRoot(t *testing.T) {
 			document.Source.Content != "---\nid: other-home\ntitle: Other project\n---\n# Other project\n" {
 			t.Fatalf("indexed root document: %+v %v", document, err)
 		}
-		result, err := current.Context(t.Context(), ContextOptions{
-			Task: "unrelated task",
-		})
+		result, err := current.Context(t.Context(), ContextOptions{})
 		if err != nil || result.Root != otherRoot || len(result.Items) != 1 ||
 			result.Items[0].Document.ID != "other-home" {
 			t.Fatalf("indexed root context: %+v %v", result, err)
@@ -293,10 +130,8 @@ func TestLiveDocumentationSurvivesUnavailableIndex(t *testing.T) {
 			if err != nil || len(impact.Documents) == 0 {
 				t.Fatalf("impact: %+v %v", impact, err)
 			}
-			result, err := service.Context(t.Context(), ContextOptions{
-				Task: "rotate tokens",
-			})
-			if err != nil || !hasDiagnostic(result, "index_unavailable") || len(result.Items) == 0 {
+			result, err := service.Context(t.Context(), ContextOptions{})
+			if err != nil || hasDiagnostic(result, "index_unavailable") || len(result.Items) == 0 {
 				t.Fatalf("context: %+v %v", result, err)
 			}
 			if state == "missing" {

@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"unicode"
 	"unicode/utf8"
 )
 
@@ -252,14 +251,12 @@ const (
 )
 
 type ContextOptions struct {
-	Task     string
 	Paths    []string
 	MaxBytes int
 }
 
 type ContextItem struct {
 	Title         string     `json:"title,omitempty"`
-	Query         string     `json:"query,omitempty"`
 	Path          string     `json:"path"`
 	Hash          string     `json:"hash"`
 	Document      *Metadata  `json:"document,omitempty"`
@@ -317,38 +314,4 @@ func fitSource(source Source, budget int) (Source, bool) {
 	next := source.EndLine + 1
 	source.NextStartLine = &next
 	return source, true
-}
-
-func keywords(task string) []string {
-	stop := " a an and are as at be can change do does explain find for from how i in implement is it me of on or please should show the this to update we what when where which why with would "
-	words := strings.FieldsFunc(
-		strings.ToLower(task),
-		func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '_' },
-	)
-	result := []string{}
-	for _, word := range words {
-		if len(word) > 1 && !strings.Contains(stop, " "+word+" ") && !slices.Contains(result, word) {
-			result = append(result, word)
-			if len(result) == 12 {
-				break
-			}
-		}
-	}
-	return result
-}
-
-func isAuthoring(terms []string) bool {
-	hasDocs, hasAction := false, false
-	for _, term := range terms {
-		if slices.Contains(
-			[]string{"docs", "documentation", "requirement", "requirements", "decision", "adr", "handbook"},
-			term,
-		) {
-			hasDocs = true
-		}
-		if slices.Contains([]string{"write", "author", "create", "new", "template"}, term) {
-			hasAction = true
-		}
-	}
-	return hasDocs && hasAction
 }

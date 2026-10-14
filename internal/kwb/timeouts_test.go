@@ -90,7 +90,7 @@ func TestReadDeadlinesAndCancellation(t *testing.T) {
 						case "impact":
 							_, err = service.Impact(ctx, []string{"README.md"})
 						case "context":
-							_, err = service.Context(ctx, kwb.ContextOptions{Task: "example"})
+							_, err = service.Context(ctx, kwb.ContextOptions{})
 						}
 					}
 					if !errors.Is(err, wantErr) || time.Since(started) != wantElapsed {
@@ -108,7 +108,7 @@ func TestReadDeadlinesAndCancellation(t *testing.T) {
 	}
 }
 
-func TestContextSharesDeadlineAcrossCatalogAndIndex(t *testing.T) {
+func TestContextRejectsExpiredCatalogRead(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		settings := kwb.NewSettings()
 		settings.RootPath = t.TempDir()
@@ -127,19 +127,11 @@ func TestContextSharesDeadlineAcrossCatalogAndIndex(t *testing.T) {
 					if got, ok := ctx.Deadline(); !ok || !got.Equal(deadline) {
 						t.Errorf("catalog deadline = %v (present %v), want %v", got, ok, deadline)
 					}
-					time.Sleep(3 * time.Second)
+					<-ctx.Done()
 					return &kwb.Catalog{}, nil
 				}),
-			index.EXPECT().GetStats(gomock.Any()).DoAndReturn(func(ctx context.Context) (*kwb.Stats, error) {
-				if got, ok := ctx.Deadline(); !ok || !got.Equal(deadline) {
-					t.Errorf("index deadline = %v (present %v), want original deadline %v", got, ok, deadline)
-					return nil, errors.New("read budget was reset")
-				}
-				<-ctx.Done()
-				return nil, ctx.Err()
-			}),
 		)
-		result, err := service.Context(t.Context(), kwb.ContextOptions{Task: "example"})
+		result, err := service.Context(t.Context(), kwb.ContextOptions{})
 		if result != nil || !errors.Is(err, context.DeadlineExceeded) || time.Since(started) != settings.SearchTimeout {
 			t.Fatalf("context result=%+v error=%v elapsed=%v", result, err, time.Since(started))
 		}

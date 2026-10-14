@@ -4,7 +4,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"slices"
 	"testing"
 
 	"go.uber.org/mock/gomock"
@@ -25,15 +24,13 @@ func TestContextPropagatesCatalogFailure(t *testing.T) {
 	index.EXPECT().CloseIndex().Return(nil)
 	catalog.EXPECT().Load(gomock.Any(), settings.RootPath).Return(nil, failure)
 	service := kwb.NewServiceForTest(t, settings, index, catalog)
-	result, err := service.Context(t.Context(), kwb.ContextOptions{
-		Task: "rotate tokens",
-	})
+	result, err := service.Context(t.Context(), kwb.ContextOptions{})
 	if result != nil || !errors.Is(err, failure) {
 		t.Fatalf("catalog failure: result=%+v err=%v", result, err)
 	}
 }
 
-func TestContextHandlesIndexFailures(t *testing.T) {
+func TestContextReadsGuidanceWithoutIndexQueries(t *testing.T) {
 	settings := kwb.NewSettings()
 	settings.RootPath = t.TempDir()
 	settings.IndexPath = filepath.Join(settings.RootPath, settings.IndexPath)
@@ -63,88 +60,34 @@ func TestContextHandlesIndexFailures(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, test := range []struct {
-		name       string
-		prepare    func(*mocks.MockindexAccessor)
-		diagnostic string
-		failure    error
+		name, root string
+		rootError  error
 	}{
-		{
-			name: "root unavailable with explicit root",
-			prepare: func(index *mocks.MockindexAccessor) {
-				index.EXPECT().ProjectRoot().Return("", os.ErrNotExist)
-				index.EXPECT().GetStats(gomock.Any()).Return(nil, os.ErrNotExist)
-			},
-			diagnostic: "index_unavailable",
-		},
-		{
-			name: "index unavailable",
-			prepare: func(index *mocks.MockindexAccessor) {
-				index.EXPECT().ProjectRoot().Return(root, nil)
-				index.EXPECT().GetStats(gomock.Any()).Return(nil, os.ErrNotExist)
-			},
-			diagnostic: "index_unavailable",
-		},
-		{
-			name: "root mismatch",
-			prepare: func(index *mocks.MockindexAccessor) {
-				index.EXPECT().ProjectRoot().Return("", kwb.ErrRootMismatch)
-			},
-			failure: kwb.ErrRootMismatch,
-		},
-		{
-			name: "root changed during retrieval",
-			prepare: func(index *mocks.MockindexAccessor) {
-				index.EXPECT().ProjectRoot().Return(root, nil)
-				index.EXPECT().GetStats(gomock.Any()).Return(&kwb.Stats{
-					RootPath:   "another-root",
-					Generation: "gen-test",
-				}, nil)
-			},
-			failure: kwb.ErrRootMismatch,
-		},
-		{
-			name: "search failure",
-			prepare: func(index *mocks.MockindexAccessor) {
-				index.EXPECT().ProjectRoot().Return(root, nil)
-				index.EXPECT().GetStats(gomock.Any()).Return(&kwb.Stats{
-					RootPath:   root,
-					Generation: "gen-test",
-				}, nil)
-				index.EXPECT().Search(gomock.Any(), gomock.Any()).Return(nil, errors.New("search unavailable"))
-			},
-			diagnostic: "search_failed",
-		},
+		{"missing index with explicit root", "", os.ErrNotExist},
+		{"available root", root, nil},
+		{"root mismatch", "", kwb.ErrRootMismatch},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			index := mocks.NewMockindexAccessor(ctrl)
 			documentation := mocks.NewMockcatalogAccessor(ctrl)
-			if test.name != "root mismatch" {
+			index.EXPECT().ProjectRoot().Return(test.root, test.rootError)
+			index.EXPECT().CloseIndex().Return(nil)
+			if !errors.Is(test.rootError, kwb.ErrRootMismatch) {
 				documentation.EXPECT().Load(gomock.Any(), root).Return(catalog, nil)
 			}
-			test.prepare(index)
-			index.EXPECT().CloseIndex().Return(nil)
 			service := kwb.NewServiceForTest(t, settings, index, documentation)
-			result, err := service.Context(t.Context(), kwb.ContextOptions{
-				Task: "rotate tokens",
-			})
-			if test.failure != nil {
-				if result != nil || !errors.Is(err, test.failure) {
-					t.Fatalf("result=%+v err=%v, want %v", result, err, test.failure)
+			result, err := service.Context(t.Context(), kwb.ContextOptions{})
+			if errors.Is(test.rootError, kwb.ErrRootMismatch) {
+				if result != nil || !errors.Is(err, kwb.ErrRootMismatch) {
+					t.Fatalf("root mismatch: result=%+v error=%v", result, err)
 				}
 				return
 			}
-			if err != nil {
-				t.Fatal(err)
-			}
-			if !slices.ContainsFunc(result.Diagnostics, func(diagnostic kwb.Diagnostic) bool {
-				return diagnostic.Code == test.diagnostic
-			}) {
-				t.Fatalf("result=%+v, want diagnostic %s", result, test.diagnostic)
-			}
-			if len(result.Items) == 0 || result.Items[0].Path != "docs/README.md" ||
+			if err != nil || len(result.Diagnostics) != 0 || len(result.Items) != 1 ||
+				result.Items[0].Path != "docs/README.md" ||
 				result.Items[0].Source.Content != "# Documentation\n" {
-				t.Fatalf("documentation unavailable after index failure: %+v", result)
+				t.Fatalf("live guidance: result=%+v error=%v", result, err)
 			}
 		})
 	}

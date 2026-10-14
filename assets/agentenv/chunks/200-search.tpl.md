@@ -50,12 +50,12 @@ those checks; report their scope and any unresolved errors or unavailable tools.
 {{ end }}
 
 {{if hasMCPTool .mcp "go42x" "project_context"}}
-Use `project_context` with the task and affected project-relative paths to load
-project guidance and relevant evidence. Follow source continuation pointers when
-needed. Check coverage diagnostics before relying on retrieval results.
-Preserve exact identifiers such as `Service.Init` in the task. Supplied files
-are read directly; directory paths scope source searches before supporting
-searches. A response can include multiple distinct ranges from one file.
+Use `project_context` with affected project-relative `paths` to load project
+guidance and linked documentation. Supplied files are read directly; directory
+paths select documentation impact without searching source files. Use
+`kwb_search` with a focused query and language-server tools to discover code.
+The context tool does not require a search index. Follow source continuation
+pointers and check coverage diagnostics before relying on the response.
 Configure up to eight guidance document IDs with `go42x mcp
 --context-doc=project,conventions` or `GO42X_CONTEXT_DOC="project conventions"`.
 Use IDs authored by the application. Guidance uses at most a quarter of the
@@ -63,8 +63,11 @@ source budget when other evidence is available; unused space returns to evidence
 {{end}}
 {{if hasMCPTool .mcp "go42x" "docs_get"}}
 Use `docs_get` to read a requirement, decision, or handbook page by its authored ID.
-Documents can live anywhere in the project. YAML front matter supplies `id`,
-`title`, and optional `collection`; directory names do not determine document type.
+Documents live in the directory containing the documentation entrypoint and its
+subdirectories. YAML front matter supplies `id`, `title`, and optional
+`collection`; directory names do not determine document type. Markdown outside
+this directory, including upstream references, remains searchable without
+project-record validation.
 Configure the documentation entrypoint with `project.documentation-entrypoint` in
 `.go42x/go42x.yaml`; omitted or empty defaults to `docs/README.md`.
 Local overrides in `.go42x/go42x.local.yaml` apply. Discovery respects `.gitignore` files.

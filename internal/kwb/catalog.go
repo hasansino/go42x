@@ -64,8 +64,8 @@ func (c *Catalog) ByPath(path string) *Document {
 
 // Load rechecks live files on every call, caching only Markdown parsing by
 // path and content hash. Deleted and renamed files disappear on the next call.
-// Markdown with YAML front matter is discovered throughout the checkout,
-// respecting .gitignore. The configured entrypoint may be plain Markdown.
+// Markdown with YAML front matter is discovered below the configured entrypoint's
+// directory, respecting .gitignore. The entrypoint may be plain Markdown.
 // All reads are confined to the project root; symlinks are not catalogued.
 func (s *documentCatalog) Load(ctx context.Context, rootPath string) (*Catalog, error) {
 	// Waiting for another reader's cache refresh consumes this request's budget.
@@ -106,7 +106,7 @@ func (s *documentCatalog) Load(ctx context.Context, rootPath string) (*Catalog, 
 	nextCache := map[string]*Document{}
 	total := 0
 	files := 0
-	err = walkMarkdown(ctx, root, func(path string, entry fs.DirEntry) error {
+	err = walkMarkdown(ctx, root, path.Dir(entrypoint), func(path string, entry fs.DirEntry) error {
 		if !entry.Type().IsRegular() {
 			catalog.Diagnostics = append(
 				catalog.Diagnostics,
@@ -288,9 +288,10 @@ type DocumentResult struct {
 	Truncated     bool         `json:"truncated"`
 }
 
-// walkMarkdown discovers candidates throughout the checkout. Nested .gitignore
-// rules control exclusions; Git internals and symlinked directories are skipped.
-func walkMarkdown(ctx context.Context, root *os.Root, visit func(string, fs.DirEntry) error) error {
+// walkMarkdown visits Markdown below directory, loading ancestor and nested
+// .gitignore rules. Unrelated directories and Git internals are not traversed.
+// Symlinked directories are skipped.
+func walkMarkdown(ctx context.Context, root *os.Root, directory string, visit func(string, fs.DirEntry) error) error {
 	patterns := map[string][]gitignore.Pattern{}
 	return fs.WalkDir(root.FS(), ".", func(name string, entry fs.DirEntry, err error) error {
 		if e := ctx.Err(); e != nil {
@@ -301,7 +302,7 @@ func walkMarkdown(ctx context.Context, root *os.Root, visit func(string, fs.DirE
 		}
 		inherited := patterns[path.Dir(name)]
 		if name != "." {
-			if entry.IsDir() && entry.Name() == ".git" {
+			if entry.IsDir() && (entry.Name() == ".git" || !PathsOverlap(name, directory)) {
 				return fs.SkipDir
 			}
 			if gitignore.NewMatcher(inherited).Match(strings.Split(name, "/"), entry.IsDir()) {
@@ -339,6 +340,9 @@ func walkMarkdown(ctx context.Context, root *os.Root, visit func(string, fs.DirE
 				local = append(local, gitignore.ParsePattern(line, domain))
 			}
 			patterns[name] = local
+			return nil
+		}
+		if directory != "." && !strings.HasPrefix(name, directory+"/") {
 			return nil
 		}
 		if ext := strings.ToLower(path.Ext(name)); ext == ".md" || ext == ".markdown" {

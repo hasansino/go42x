@@ -21,9 +21,12 @@ func TestStructuredToolResponses(t *testing.T) {
 	); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.MkdirAll(filepath.Join(root, "docs"), 0755); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(
-		filepath.Join(root, "README.md"),
-		[]byte("---\nid: server\ntitle: Server\n---\n# Server\n[Code](server.go)\n"),
+		filepath.Join(root, "docs/README.md"),
+		[]byte("---\nid: server\ntitle: Server\n---\n# Server\n[Code](../server.go)\n"),
 		0600,
 	); err != nil {
 		t.Fatal(err)
@@ -45,7 +48,7 @@ func TestStructuredToolResponses(t *testing.T) {
 		"kwb_stats":       {},
 		"docs_get":        {"id": "server"},
 		"docs_impact":     {"paths": []string{"server.go"}},
-		"project_context": {"task": "http server", "paths": []string{"server.go"}},
+		"project_context": {"paths": []string{"server.go"}},
 	}
 	for _, tool := range New(service).Tools() {
 		t.Run(tool.Tool.Name, func(t *testing.T) {

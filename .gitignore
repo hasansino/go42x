@@ -17,8 +17,8 @@
 .mcp.json
 .claude/
 .codex/
-AGENTS.md
 .agents/plugins/project-tools/
 .crush/
 .crush.json
+AGENTS.md
 # go42x -- END

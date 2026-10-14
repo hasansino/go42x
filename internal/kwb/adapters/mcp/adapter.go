@@ -118,12 +118,11 @@ func (s *Adapter) Tools() []server.ServerTool {
 		{Tool: mcp.NewTool(
 			"project_context",
 			mcp.WithDescription(
-				"Assemble task context: project profile and rules, documentation linked to changed paths, relevant requirements/decisions, and keyword-ranked source candidates. Uses live documentation and verifies retrieved source hashes. Missing index reduces coverage; proposals and history retain status labels. Default source budget 16 KiB; total encoded response at most 64 KiB.",
+				"Assemble live project guidance, documentation linked to supplied paths, and bounded reads of explicitly supplied files. Directory paths select documentation impact only. No implicit source searches; use kwb_search and language-server tools for discovery. No search index required; proposals and history retain status labels. Default source budget 16 KiB; total encoded response at most 64 KiB.",
 			),
 			mcp.WithReadOnlyHintAnnotation(
 				true,
 			),
-			mcp.WithString("task", mcp.Required(), mcp.MinLength(1), mcp.MaxLength(4096)),
 			mcp.WithArray("paths", mcp.WithStringItems(), mcp.MaxItems(kwb.MaxImpactPaths)),
 			mcp.WithNumber("max_bytes", mcp.Min(1), mcp.Max(kwb.MaxContentBytes)),
 			mcp.WithOutputSchema[kwb.ContextResult](),
@@ -219,7 +218,6 @@ func (s *Adapter) context(ctx context.Context, request mcp.CallToolRequest) (*mc
 		s.service.Context(
 			ctx,
 			kwb.ContextOptions{
-				Task:     request.GetString("task", ""),
 				Paths:    paths,
 				MaxBytes: request.GetInt("max_bytes", 0),
 			},

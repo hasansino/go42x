@@ -56,7 +56,7 @@ context: {template: agents.tpl.md}
 providers: {codex: {enabled: false}}
 `
 	entrypoint := "docs/README.md"
-	wantFiles := 3
+	wantFiles := 4
 	if config.entrypoint != "" {
 		p.write(t, ".go42x/go42x.yaml", fmt.Sprintf(projectConfig, config.entrypoint))
 		entrypoint = config.entrypoint
@@ -67,6 +67,8 @@ providers: {codex: {enabled: false}}
 		entrypoint = config.localEntrypoint
 	}
 	p.write(t, entrypoint, "# Project documentation\n")
+	p.write(t, filepath.Join(filepath.Dir(entrypoint), "overview.md"),
+		"---\nid: overview\ntitle: Local project\n---\n# Local project\nE2E example.\n")
 	p.run(t, 0, "kwb", "build")
 	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 	defer cancel()
@@ -190,7 +192,7 @@ providers: {codex: {enabled: false}}
 			{"kwb_stats", map[string]any{}},
 			{"docs_get", map[string]any{"id": "overview"}},
 			{"docs_impact", map[string]any{"paths": []string{"README.md"}}},
-			{"project_context", map[string]any{"task": "project"}},
+			{"project_context", map[string]any{}},
 		} {
 			called.IsError, called.Content = false, nil
 			request(i+3, "tools/call", map[string]any{"name": tool.name, "arguments": tool.args}, &called)
@@ -219,7 +221,7 @@ providers: {codex: {enabled: false}}
 		request(
 			4,
 			"tools/call",
-			map[string]any{"name": "project_context", "arguments": map[string]any{"task": "unrelated task"}},
+			map[string]any{"name": "project_context", "arguments": map[string]any{}},
 			&called,
 		)
 		if called.IsError || len(called.Content) != 1 ||

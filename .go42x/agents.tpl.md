@@ -1,5 +1,12 @@
 # Project context
 
+{{/*
+The context block owns field selection, names, nesting, and order.
+Use yamlValue for dynamic values and keys; it handles quoting and escaping.
+The omit-empty option removes nulls, empty strings, and empty collections recursively.
+False, zero, and whitespace-only strings are preserved. Omit the option to keep all values.
+Instruction chunks below remain Markdown.
+*/ -}}
 {{ define "context" -}}
 project:
   name: {{ yamlValue .project.name }}
