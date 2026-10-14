@@ -73,6 +73,12 @@ tasks:
       - "mise install --locked"
       - "go mod download"
 
+  ## setup:generators | install dependencies for code generation
+  setup:generators:
+    desc: "install dependencies for code generation"
+    cmds:
+      - "mise install --locked task go:go.uber.org/mock/mockgen"
+
   ## setup:docs | install dependencies for documentation checks
   setup:docs:
     desc: "Install pinned documentation tools"
